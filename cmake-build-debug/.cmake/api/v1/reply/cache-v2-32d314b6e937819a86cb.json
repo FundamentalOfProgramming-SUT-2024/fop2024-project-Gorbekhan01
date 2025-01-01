@@ -55,7 +55,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/Users/gorbekhan/Documents/GitHub/fop2024-project-Gorbekhan01/RogueGame/cmake-build-debug"
+			"value" : "/Users/gorbekhan/Documents/DON'T TOUCH/RogueGame/cmake-build-debug"
 		},
 		{
 			"name" : "CMAKE_CACHE_MAJOR_VERSION",
@@ -479,7 +479,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/Users/gorbekhan/Documents/GitHub/fop2024-project-Gorbekhan01/RogueGame/cmake-build-debug/CMakeFiles/pkgRedirects"
+			"value" : "/Users/gorbekhan/Documents/DON'T TOUCH/RogueGame/cmake-build-debug/CMakeFiles/pkgRedirects"
 		},
 		{
 			"name" : "CMAKE_GENERATOR",
@@ -539,7 +539,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/Users/gorbekhan/Documents/GitHub/fop2024-project-Gorbekhan01/RogueGame"
+			"value" : "/Users/gorbekhan/Documents/DON'T TOUCH/RogueGame"
 		},
 		{
 			"name" : "CMAKE_INSTALL_NAME_TOOL",
@@ -1235,7 +1235,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/Users/gorbekhan/Documents/GitHub/fop2024-project-Gorbekhan01/RogueGame/cmake-build-debug"
+			"value" : "/Users/gorbekhan/Documents/DON'T TOUCH/RogueGame/cmake-build-debug"
 		},
 		{
 			"name" : "RogueGame_IS_TOP_LEVEL",
@@ -1259,7 +1259,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/Users/gorbekhan/Documents/GitHub/fop2024-project-Gorbekhan01/RogueGame"
+			"value" : "/Users/gorbekhan/Documents/DON'T TOUCH/RogueGame"
 		}
 	],
 	"kind" : "cache",

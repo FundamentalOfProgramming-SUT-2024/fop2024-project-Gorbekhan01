@@ -42,7 +42,7 @@ rule CUSTOM_COMMAND
 # Rule for re-running cmake.
 
 rule RERUN_CMAKE
-  command = /Applications/CLion.app/Contents/bin/cmake/mac/aarch64/bin/cmake --regenerate-during-build -S/Users/gorbekhan/Documents/GitHub/fop2024-project-Gorbekhan01/RogueGame -B/Users/gorbekhan/Documents/GitHub/fop2024-project-Gorbekhan01/RogueGame/cmake-build-debug
+  command = /Applications/CLion.app/Contents/bin/cmake/mac/aarch64/bin/cmake --regenerate-during-build -S"/Users/gorbekhan/Documents/DON'T TOUCH/RogueGame" -B"/Users/gorbekhan/Documents/DON'T TOUCH/RogueGame/cmake-build-debug"
   description = Re-running CMake...
   generator = 1
 
