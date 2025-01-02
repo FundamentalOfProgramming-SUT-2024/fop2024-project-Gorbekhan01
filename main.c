@@ -3,6 +3,41 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <wchar.h>
+#include <time.h>
+
+void draw_character(int y, int x, int color) {
+    init_pair(1, COLOR_WHITE, COLOR_BLACK);
+    init_pair(2, COLOR_CYAN, COLOR_BLACK);
+    init_pair(3, COLOR_GREEN, COLOR_BLACK);
+    if(color==0){
+        attron(COLOR_PAIR(1));
+        mvprintw(y , x, "⌬");
+        attroff(COLOR_PAIR(1));
+    }
+    else if(color==1){
+        attron(COLOR_PAIR(2));
+        mvprintw(y , x, "⌬");
+        attroff(COLOR_PAIR(2));
+    }
+    else if(color==2){
+        attron(COLOR_PAIR(3));
+        mvprintw(y , x, "⌬");
+        attroff(COLOR_PAIR(3));
+    }
+    else if(color==3){
+        wchar_t cat = 0x0001F431;
+        mvprintw(y, x, "%lc", cat);
+    }
+
+}
+
+typedef struct game{
+   char username[100];
+   int music;
+   int game_level;
+   int player_color;
+}game;
 
 typedef struct user{
     char username[100];
@@ -10,8 +45,10 @@ typedef struct user{
     char total_gold[100];
     char total_finished_games[100];
     char total_time[100];
-
+    struct game game_setting;
 }user;
+
+
 
 void opening();
 int choosing_user(char *username);
@@ -19,6 +56,10 @@ int new_user(char *username);
 int old_user(char *username);
 int game_menu(char *username);
 int  leaderboard(struct user *current_user);
+int gamesetting(struct user *current_user);
+void easy_game(struct user *current_user);
+
+
 
 int main() {
 
@@ -35,6 +76,10 @@ int main() {
     int choice = game_menu(username);
     if(choice==0){
         leaderboard(&current_user);
+        int level = gamesetting(&current_user);
+        if (current_user.game_setting.game_level==0){
+            easy_game(&current_user);
+        }
     }
 
     endwin();
@@ -119,6 +164,7 @@ int choosing_user(char *username){
                     return 0;
                 }
                 else if(selected == 2) {
+                    strcpy(username,"guest");
                     return 0;
                 }
                 refresh();
@@ -442,8 +488,223 @@ int leaderboard(struct user *current_user) {
     }
 
     fclose(fptr);
-    mvprintw(center_y + 30, center_x, "[ Press enter to start the game ]");
+    mvprintw(center_y + 30, center_x+10, "[ Press enter to start the game ]");
     refresh();
     getch();
     return 0;
+}
+
+int gamesetting(struct user *current_user) {
+    char *choices[] = {"easy", "medium", "hard"};
+    char *colors[] = {"white", "cyan", "green","SPECIAL!"};
+
+    int n_choices = 3;
+    int current_choice = 0;
+    int color_choice = 0;
+    int current_menu = 0;
+    int ch;
+
+    initscr();
+    clear();
+    noecho();
+    cbreak();
+    keypad(stdscr, TRUE);
+    curs_set(0);
+
+    int max_y, max_x;
+    getmaxyx(stdscr, max_y, max_x);
+    int center_y = max_y / 2 - 7;
+    int center_x = max_x / 2 - 15;
+
+    start_color();
+    init_pair(1, COLOR_WHITE, COLOR_BLACK);
+    init_pair(2, COLOR_BLACK, COLOR_WHITE);
+
+        while (1) {
+            clear();
+
+
+            mvprintw(center_y - 6, center_x , "╔══════════════════════════════╗");
+            mvprintw(center_y - 5, center_x , "║   G A M E  S E T T I N G S   ║");
+            mvprintw(center_y - 4, center_x , "╚══════════════════════════════╝");
+
+            attron(A_BOLD);
+            attron(A_STANDOUT);
+            mvprintw(center_y - 2, center_x , " Choose the game level");
+            attroff(A_STANDOUT);
+            attroff(A_BOLD);
+
+            attron(A_BOLD);
+            attron(A_STANDOUT);
+            mvprintw(center_y + 8, center_x , " Choose your character's color");
+            attroff(A_STANDOUT);
+            attroff(A_BOLD);
+
+
+            int level_start_x = center_x ;
+            for (int i = 0; i < n_choices; i++) {
+                if (current_menu == 0 && i == current_choice) {
+                    attron(A_REVERSE);
+                    mvprintw(center_y + 1, level_start_x + i * 9, "%s", choices[i]);
+                    attroff(A_REVERSE);
+                } else {
+                    mvprintw(center_y + 1, level_start_x + i * 9, "%s", choices[i]);
+                }
+            }
+
+
+            int color_start_x = center_x ;
+            for (int i = 0; i < n_choices+1; i++) {
+                if (current_menu == 1 && i == color_choice) {
+                    attron(A_REVERSE);
+                    mvprintw(center_y + 11, color_start_x + i * 9, "%s", colors[i]);
+                    attroff(A_REVERSE);
+                } else {
+                    mvprintw(center_y + 11, color_start_x + i * 9, "%s", colors[i]);
+                }
+            }
+
+            attron(A_BOLD);
+            attron(A_STANDOUT);
+            mvprintw(center_y + 20, center_x , "[ Press Enter to start the game ]");
+            attroff(A_STANDOUT);
+            attroff(A_BOLD);
+
+            refresh();
+
+            ch = getch();
+            switch (ch) {
+                case KEY_RIGHT:
+                    if (current_menu == 0 && current_choice < n_choices - 1)
+                        current_choice++;
+                    else if (current_menu == 1 && color_choice < n_choices)
+                        color_choice++;
+                    break;
+                case KEY_LEFT:
+                    if (current_menu == 0 && current_choice > 0)
+                        current_choice--;
+                    else if (current_menu == 1 && color_choice > 0)
+                        color_choice--;
+                    break;
+                case KEY_ENTER:
+                case '\n':
+                    if (current_menu == 0) {
+                        current_user->game_setting.game_level = current_choice;
+                        current_menu = 1;
+                    } else if (current_menu == 1) {
+                        current_user->game_setting.player_color = color_choice;
+                        current_menu = 2;
+                    } else if (current_menu == 2) {
+                        endwin();
+                        return 0;
+                    }
+                    break;
+            }
+        }
+
+        endwin();
+        return 0;
+    }
+
+
+void easy_game(struct user *current_user) {
+    setlocale(LC_ALL, "");
+    int max_y, max_x;
+
+    initscr();
+    keypad(stdscr, TRUE);
+    noecho();
+    curs_set(0);
+
+    getmaxyx(stdscr, max_y, max_x);
+    char map[max_y][max_x];
+
+    for(int i = 0; i < max_y; i++) {
+        for(int j = 0; j < max_x; j++) {
+            map[i][j] = ' ';
+        }
+    }
+
+    //number of rooms randomly
+    srand(time(NULL));
+    int number_of_rooms = 6 + (rand() % 3);
+    int num = 0;
+
+    while(num < number_of_rooms) {
+        int size_room_y = 8 + (rand() % 6);
+        int size_room_x = 8 + (rand() % 6);
+
+
+        int room_y = 1 + (rand() % (max_y - size_room_y - 2));
+        int room_x = 1 + (rand() % (max_x - size_room_x - 2));
+
+        //generating rooms
+        for(int i = 0; i < size_room_y; i++) {
+            for(int j = 0; j < size_room_x; j++) {
+                if(room_y + i < max_y && room_x + j < max_x) {
+                    if(i == 0 || i == size_room_y-1) {
+                        map[room_y + i][room_x + j] = '_';
+                    }
+                    else if(j == 0 || j == size_room_x-1) {
+                        map[room_y + i][room_x + j] = '|';
+                    }
+                    else {
+                        map[room_y + i][room_x + j] = '.';
+                    }
+                }
+            }
+        }
+        num++;
+    }
+
+
+    clear();
+    for(int i = 0; i < max_y; i++) {
+        for(int j = 0; j < max_x; j++) {
+            if(map[i][j] != ' ') {
+                mvaddch(i, j, map[i][j]);
+            }
+        }
+    }
+    refresh();
+
+    int x = 0, y = 0;
+    int player_placed = 0;
+    while(!player_placed) {
+        y = rand() % max_y  + 1;
+        x = rand() % max_x  + 1;
+        if(map[y][x] == '.') {
+            player_placed = 1;
+        }
+    }
+
+    int c;
+    do {
+        for(int i = 0; i < max_y; i++) {
+            for(int j = 0; j < max_x; j++) {
+                if(map[i][j] != ' ') {
+                    mvaddch(i, j, map[i][j]);
+                }
+            }
+        }
+
+        int new_y = y;
+        int new_x = x;
+
+        if (c == KEY_UP && y > 0) new_y--;
+        if (c == KEY_DOWN && y < max_y-1) new_y++;
+        if (c == KEY_RIGHT && x < max_x-1) new_x++;
+        if (c == KEY_LEFT && x > 0) new_x--;
+
+        if(map[new_y][new_x] == '.') {
+            y = new_y;
+            x = new_x;
+        }
+
+        draw_character(y, x, current_user->game_setting.player_color);
+        refresh();
+
+    } while ((c = getch()) != 27);
+
+    endwin();
 }
