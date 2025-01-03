@@ -6,23 +6,29 @@
 #include <wchar.h>
 #include <time.h>
 
+
+void draw_black_gold(int y, int x) {
+    wchar_t gold = 0x0001F312;
+    mvprintw(y, x, "%lc", gold);
+}
+
 void draw_character(int y, int x, int color) {
     init_pair(1, COLOR_WHITE, COLOR_BLACK);
     init_pair(2, COLOR_CYAN, COLOR_BLACK);
     init_pair(3, COLOR_GREEN, COLOR_BLACK);
     if(color==0){
         attron(COLOR_PAIR(1));
-        mvprintw(y , x, "⌬");
+        mvprintw(y , x, "◍");
         attroff(COLOR_PAIR(1));
     }
     else if(color==1){
         attron(COLOR_PAIR(2));
-        mvprintw(y , x, "⌬");
+        mvprintw(y , x, "◍");
         attroff(COLOR_PAIR(2));
     }
     else if(color==2){
         attron(COLOR_PAIR(3));
-        mvprintw(y , x, "⌬");
+        mvprintw(y , x, "◍");
         attroff(COLOR_PAIR(3));
     }
     else if(color==3){
@@ -627,47 +633,93 @@ void easy_game(struct user *current_user) {
 
     //number of rooms randomly
     srand(time(NULL));
-    int number_of_rooms = 6 + (rand() % 3);
+    int number_of_rooms = 6 + (rand() % 2);
     int num = 0;
+    //////
+    typedef struct {
+        int x;
+        int y;
+    }room;
+    ////////
 
-    while(num < number_of_rooms) {
-        int size_room_y = 8 + (rand() % 6);
-        int size_room_x = 8 + (rand() % 6);
+    //generating rooms
+    while (num < number_of_rooms) {
+        int ok = 0;
+        int size_room_y, size_room_x, room_y, room_x;
 
+        while (ok == 0) {
+            size_room_y = 9 + (rand() % 6);
+            size_room_x = 9 + (rand() % 6);
+            room_y = 2 + (rand() % (max_y - size_room_y - 8));
+            room_x = 2 + (rand() % (max_x - size_room_x - 8));
 
-        int room_y = 1 + (rand() % (max_y - size_room_y - 2));
-        int room_x = 1 + (rand() % (max_x - size_room_x - 2));
-
-        //generating rooms
-        for(int i = 0; i < size_room_y; i++) {
-            for(int j = 0; j < size_room_x; j++) {
-                if(room_y + i < max_y && room_x + j < max_x) {
-                    if(i == 0 || i == size_room_y-1) {
-                        map[room_y + i][room_x + j] = '_';
-                    }
-                    else if(j == 0 || j == size_room_x-1) {
-                        map[room_y + i][room_x + j] = '|';
-                    }
-                    else {
-                        map[room_y + i][room_x + j] = '.';
+            int overlap = 0;
+            for (int i = 0; i < size_room_y && !overlap; i++) {
+                for (int j = 0; j < size_room_x && !overlap; j++) {
+                    if (map[room_y + i][room_x + j] == '.' ||
+                        map[room_y + i][room_x + j] == '_' ||
+                        map[room_y + i][room_x + j] == '|') {
+                        overlap = 1;
                     }
                 }
             }
-        }
-        num++;
-    }
-
-
-    clear();
-    for(int i = 0; i < max_y; i++) {
-        for(int j = 0; j < max_x; j++) {
-            if(map[i][j] != ' ') {
-                mvaddch(i, j, map[i][j]);
+            if (overlap==0) {
+                ok++;
             }
         }
+        for (int i = 0; i < size_room_y; i++) {
+                for (int j = 0; j < size_room_x; j++) {
+                    if (room_y + i < max_y && room_x + j < max_x) {
+                        if (i == 0 || i == size_room_y - 1) {
+                            map[room_y + i][room_x + j] = '-';
+                        } else if (j == 0 || j == size_room_x - 1) {
+                            map[room_y + i][room_x + j] = '|';
+                        } else {
+                            map[room_y + i][room_x + j] = '.';
+                        }
+                    }
+                }
+            }
+            num++;
     }
-    refresh();
 
+    //putting pillars
+    int num_pillars= 6+ (rand() % 4);
+    int np=0 ,py ,px;
+    while(np<num_pillars){
+        py = rand() % max_y  + 1;
+        px = rand() % max_x  + 1;
+        if(map[py][px]=='.'){
+            map[py][px]='O';
+            np++;
+        }
+    }
+
+    //putting yellow golds
+    int num_ygolds= 4+ (rand() % 4);
+    int nyg=0 ,gy ,gx;
+    while(nyg<num_ygolds){
+        gy = rand() % max_y  + 1;
+        gx = rand() % max_x  + 1;
+        if(map[gy][gx]=='.'){
+            map[gy][gx]='$';
+            nyg++;
+        }
+    }
+
+    //putting black golds
+    int num_bgolds= 2 + (rand() % 1);
+    int nbg=0 ,by ,bx;
+    while(nbg<num_bgolds){
+        by = rand() % max_y  + 1;
+        bx = rand() % max_x  + 1;
+        if(map[by][bx]=='.'){
+            map[by][bx]='@';
+            nbg++;
+        }
+    }
+
+    //place player randomly on map
     int x = 0, y = 0;
     int player_placed = 0;
     while(!player_placed) {
@@ -678,12 +730,46 @@ void easy_game(struct user *current_user) {
         }
     }
 
+    clear();
+
+    init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
+    init_pair(6, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(7, COLOR_BLACK, COLOR_WHITE);
+    ////////////////////
+    int total_yellow_gold=0;
+    int total_black_gold=0;
+    /////////////////////
+
+ // printing map (player movement -- map)
     int c;
     do {
         for(int i = 0; i < max_y; i++) {
             for(int j = 0; j < max_x; j++) {
                 if(map[i][j] != ' ') {
-                    mvaddch(i, j, map[i][j]);
+                    if(map[i][j]=='|'){
+                        attron(COLOR_PAIR(5));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(5));
+                    }
+                    else if(map[i][j]=='O'){
+                        attron(COLOR_PAIR(5));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(5));
+                    }
+                    else if(map[i][j]=='$'){
+                        attron(COLOR_PAIR(6));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(6));
+                    }
+                    else if(map[i][j]=='@'){
+                        attron(COLOR_PAIR(7));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(7));
+                    }
+                    else {
+                        mvaddch(i, j, map[i][j]);
+                    }
+
                 }
             }
         }
@@ -691,15 +777,24 @@ void easy_game(struct user *current_user) {
         int new_y = y;
         int new_x = x;
 
+
         if (c == KEY_UP && y > 0) new_y--;
-        if (c == KEY_DOWN && y < max_y-1) new_y++;
-        if (c == KEY_RIGHT && x < max_x-1) new_x++;
+        if (c == KEY_DOWN && y < max_y - 1) new_y++;
+        if (c == KEY_RIGHT && x < max_x - 1) new_x++;
         if (c == KEY_LEFT && x > 0) new_x--;
 
-        if(map[new_y][new_x] == '.') {
+
+        if(map[new_y][new_x] == '.' || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@') {
+            if(map[new_y][new_x] == '$'){
+                total_yellow_gold++;
+            }
+            if(map[new_y][new_x] == '@'){
+                total_black_gold++;
+            }
             y = new_y;
             x = new_x;
         }
+        map[y][x]='.';
 
         draw_character(y, x, current_user->game_setting.player_color);
         refresh();
