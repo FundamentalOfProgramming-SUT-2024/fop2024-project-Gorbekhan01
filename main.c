@@ -64,6 +64,7 @@ int game_menu(char *username);
 int  leaderboard(struct user *current_user);
 int gamesetting(struct user *current_user);
 int easy_game(struct user *current_user);
+int food_bar(int* food1, int* health , int* food);
 int lose();
 
 
@@ -653,6 +654,103 @@ int gamesetting(struct user *current_user) {
     }
 
 
+int food_bar(int* food1,int* health,int* food){
+    initscr();
+    keypad(stdscr, TRUE);
+    refresh();
+    noecho();
+    cbreak();
+    clear();
+    start_color();
+    curs_set(0);
+    init_pair(1, COLOR_WHITE, COLOR_BLACK);
+    int max_y, max_x;
+    getmaxyx(stdscr, max_y, max_x);
+    int center_y = max_y / 2 - 7;
+    int center_x = max_x / 2 - 15;
+    int selected =0;
+    int key;
+    init_pair(1,COLOR_YELLOW,COLOR_RED);
+    while(1) {
+        mvprintw(center_y-12,22,"** S T A T U S ***************************");
+        mvprintw(center_y-10,22,"health: ");
+        refresh();
+        for(int i =0;i<=*health;i++){
+            mvprintw(center_y-10,30+i,"♥");
+            mvprintw(center_y-10,30+*health," ");
+        }
+
+        //food
+        mvprintw(center_y-10,44,"food: ");
+
+        for(int i =0;i<=*food;i++){
+            mvprintw(center_y-10,50+i,"+");
+            mvprintw(center_y-10,50+*food," ");
+        }
+        mvprintw(center_y-8,22,"******************************************");
+
+        refresh();
+        mvprintw(center_y, center_x, "----- FOODS BASKET -----",*food1);
+        if (selected == 0) {
+            mvprintw(center_y+5, center_x+5, "> Food 1 = [ %d ]",*food1);
+            attron(COLOR_PAIR(1));
+            mvprintw(center_y+5, center_x+2, "F");
+            attroff(COLOR_PAIR(1));
+
+        } else {
+            mvprintw(center_y+5, center_x+5, "Food 1 = [ %d ]",*food1);
+            attron(COLOR_PAIR(1));
+            mvprintw(center_y+5, center_x+2, "F");
+            attroff(COLOR_PAIR(1));
+        }
+        mvprintw(center_y+10, center_x, "------- --------- -------",*food1);
+
+        mvprintw(center_y+16, center_x, "-- Use KEY UP & KEY DOWN to choose food --");
+        mvprintw(center_y+18, center_x, "-- Press ENTER to eat! --");
+        mvprintw(center_y+20, center_x, "-- Press Q to exit --");
+        refresh();
+        key = getch();
+
+
+        switch(key) {
+            case 'q':
+                clear();
+                return 3;
+            case KEY_UP:
+                selected--;
+                if(selected < 0) {
+                    selected = 0;
+                }
+                break;
+            case KEY_DOWN:
+                selected++;
+                if(selected > 0) {
+                    selected = 0;
+                }
+                break;
+            case '\n':
+                refresh();
+                if(selected == 0) {
+
+                    if(*food1<=0){
+                        *food1=0;
+                    }
+                    else{
+                        *health = 10;
+                        *food = 10;
+                        *food1=*food1-1;
+                    }
+
+                }
+
+                refresh();
+                getch();
+                break;
+        }
+    }
+
+}
+
 int easy_game(struct user *current_user) {
     setlocale(LC_ALL, "");
     initscr();
@@ -686,8 +784,8 @@ int easy_game(struct user *current_user) {
         int size_room_y, size_room_x, room_y, room_x;
 
         while (ok == 0) {
-            size_room_y = 10 + (rand() % 6);
-            size_room_x = 10 + (rand() % 6);
+            size_room_y = 8 + (rand() % 6);
+            size_room_x = 8 + (rand() % 6);
             room_y = 3 + (rand() % (max_y - size_room_y - 8));
             room_x = 3 + (rand() % (max_x - size_room_x - 8));
 
@@ -808,6 +906,7 @@ int easy_game(struct user *current_user) {
                         map[current_y+1][x2] = '+';
                         map[current_y-1][x2] = '+';
                     }
+
                 }
                 else if (map[current_y][x2] == ' ') {
                     map[current_y][x2] = '#';
@@ -819,7 +918,7 @@ int easy_game(struct user *current_user) {
         num++;
     }
 
-    //putting pillars
+    //pillars
     int num_pillars= 6+ (rand() % 4);
     int np=0 ,py ,px;
     while(np<num_pillars){
@@ -830,8 +929,19 @@ int easy_game(struct user *current_user) {
             np++;
         }
     }
+    //traps
+    int num_traps= 3+ (rand() % 4);
+    int nt=0 ,ty ,tx;
+    while(nt<num_traps){
+        ty = rand() % max_y  + 1;
+        tx = rand() % max_x  + 1;
+        if(map[ty][tx]=='.'){
+            map[ty][tx]='T';
+            nt++;
+        }
+    }
 
-    //putting foods
+    //foods
     int num_foods= 10+ (rand() % 6);
     int nf=0 ,fy ,fx;
     while(nf<num_foods){
@@ -843,7 +953,7 @@ int easy_game(struct user *current_user) {
         }
     }
 
-    //putting yellow golds
+    //yellow golds
     int num_ygolds= 6 + (rand() % 4);
     int nyg=0 ,gy ,gx;
     while(nyg<num_ygolds){
@@ -855,7 +965,7 @@ int easy_game(struct user *current_user) {
         }
     }
 
-    //putting black golds
+    //black golds
     int num_bgolds= 4 + (rand() % 1);
     int nbg=0 ,by ,bx;
     while(nbg<num_bgolds){
@@ -890,6 +1000,7 @@ int easy_game(struct user *current_user) {
     /////////////////////
 
     int food=10;
+    int food1=0;
     int health=10;
  // printing map (player movement -- map)
     int c;
@@ -923,6 +1034,12 @@ int easy_game(struct user *current_user) {
                         mvaddch(i, j, map[i][j]);
                         attroff(COLOR_PAIR(8));
                     }
+                    else if(map[i][j]=='T'){
+                        mvaddch(i, j, '.');
+                    }
+                    else if(map[i][j]=='^'){
+                        mvaddch(i, j, map[i][j]);
+                    }
                     else {
                         mvaddch(i, j, map[i][j]);
                     }
@@ -934,14 +1051,21 @@ int easy_game(struct user *current_user) {
         int new_y = y;
         int new_x = x;
 
-
+        if(c ==101) { ///food window
+            clear();
+            int p= food_bar(&food1, &health, &food);
+            if(p==3){
+                continue;
+            }
+            c = getch();
+        }
         if (c == KEY_UP && y > 0) new_y--;
         if (c == KEY_DOWN && y < max_y - 1) new_y++;
         if (c == KEY_RIGHT && x < max_x - 1) new_x++;
         if (c == KEY_LEFT && x > 0) new_x--;
 
         if(map[new_y][new_x] == '.' || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '+' ||
-           map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F') {
+           map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^') {
             if(map[new_y][new_x] == '$'){
                 int temp = 2 + (rand() % 3 );
                 mvprintw(2,3,"You received %d GOLDS !",temp);
@@ -955,20 +1079,26 @@ int easy_game(struct user *current_user) {
             if(map[new_y][new_x] == 'F'){
                 int temp = 1;
                 mvprintw(2,3,"You received %d FOOD !",temp);
-                food+= 5;
-                if(food>10){
-                    food=10;
-                }
-                health=health+2;
-                if(health>10){
-                    health=10;
-                }
+                food1+= 1;
+               if(food1>5){
+                   food1=5;
+               }
             }
+
+            if(map[new_y][new_x] == 'T'){
+                int temp = 1;
+                mvprintw(2,3,"You stepped on a TRAP !",temp);
+                health=health-2;
+                refresh();
+                map[new_y][new_x]='^';
+            }
+
+
             y = new_y;
             x = new_x;
         }
 
-        if(map[y][x]!='+' && map[y][x]!='#'){
+        if(map[y][x]!='+' && map[y][x]!='#'&&map[y][x]!='^'){
             map[y][x]='.';
         }
         mvprintw(max_y-2,max_x-10,"GOLD: %d",total_black_gold+total_yellow_gold);
@@ -991,6 +1121,9 @@ int easy_game(struct user *current_user) {
         for(int i =0;i<=health;i++){
             mvprintw(max_y-2,10+i,"♥");
             mvprintw(max_y-2,10+health," ");
+            for(int j=0;j<10-i;j++){
+                mvprintw(max_y-2,10+health+j," ");
+            }
         }
 
         //food
@@ -1000,12 +1133,9 @@ int easy_game(struct user *current_user) {
             mvprintw(max_y-2,30+i,"+");
             mvprintw(max_y-2,30+food," ");
         }
-        if(food<3){
-            counter=counter+3;
-        }
-        else{
-            counter++;
-        }
+
+        counter++;
+
         refresh();
 
     } while ((c = getch()) != 27);
@@ -1072,4 +1202,6 @@ int lose(){
     }
     refresh();
 }
+
+
 
