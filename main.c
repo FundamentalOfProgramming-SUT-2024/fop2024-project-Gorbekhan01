@@ -47,11 +47,16 @@ typedef struct game{
 
 typedef struct user{
     char username[100];
-    char total_score[100];
-    char total_gold[100];
-    char total_finished_games[100];
+    int total_score;
+    int total_gold;
+    int total_finished_games;
     char total_time[100];
     struct game game_setting;
+    int rank;
+    int food;
+    int health;
+    int food1;
+    int new_golds;
 }user;
 
 
@@ -61,11 +66,15 @@ int choosing_user(char *username);
 int new_user(char *username);
 int old_user(char *username);
 int game_menu(char *username);
-int  leaderboard(struct user *current_user);
+int leaderboard(struct user *current_user ,int status);
 int gamesetting(struct user *current_user);
 int easy_game(struct user *current_user);
+int easy_game_f2(struct user *current_user);
+int easy_game_f3(struct user *current_user);
+int easy_game_f4(struct user *current_user);
 int food_bar(int* food1, int* health , int* food);
 int lose();
+int victory(struct user *current_user);
 
 
 int main() {
@@ -84,7 +93,7 @@ int main() {
     int repeat=0;
     while(repeat==0) {
         if (choice == 0) {
-            leaderboard(&current_user);
+            leaderboard(&current_user,0);
             int level = gamesetting(&current_user);
             if (current_user.game_setting.game_level == 0) {
                 int result_game = easy_game(&current_user);
@@ -94,8 +103,13 @@ int main() {
                     }
                     else {
                         repeat =1;
+                        return 0;
                     }
 
+                }
+                else if(result_game==1){
+                    victory(&current_user);
+                    leaderboard(&current_user,1);
                 }
             }
         }
@@ -311,10 +325,10 @@ int new_user(char *username) {
     mvprintw(center_y + 2, center_x, "                      ");
     attroff(COLOR_PAIR(1) | A_BOLD | A_BLINK);
 
-    mvprintw(center_y + 11, center_x-1, "\\    /\\");
-    mvprintw(center_y + 12, center_x-1, " )  ( ') ");
-    mvprintw(center_y + 13, center_x-1, "(  /  )");
-    mvprintw(center_y + 14, center_x-1, " \\(__)|");
+    mvprintw(center_y + 11, center_x - 1, "\\    /\\");
+    mvprintw(center_y + 12, center_x - 1, " )  ( ') ");
+    mvprintw(center_y + 13, center_x - 1, "(  /  )");
+    mvprintw(center_y + 14, center_x - 1, " \\\\(__)|");
 
     mvprintw(center_y + 4, center_x, "◦ Username: ");
     mvprintw(center_y + 6, center_x, "◦ Password: ");
@@ -324,9 +338,9 @@ int new_user(char *username) {
 
     echo();
     int temp = 0;
-    FILE* fptr = fopen("users.txt", "r");
-    if(fptr == NULL) {
-        FILE* fptr = fopen("users.txt", "w");
+    FILE *fptr = fopen("users.txt", "r");
+    if (fptr == NULL) {
+        FILE *fptr = fopen("users.txt", "w");
         refresh();
     }
     //taken username !!!!
@@ -345,20 +359,22 @@ int new_user(char *username) {
         while (fgets(tempi, 100, fptr) != NULL) {
             sscanf(tempi, "%s %s %s", temp_username, temp_password, temp_email);
             if (strcmp(temp_username, username) == 0) {
-                mvprintw(center_y + 12, center_x+9, "This username is taken! ");
+                mvprintw(center_y + 12, center_x + 9, "This username is taken! ");
                 refresh();
+                move(center_y + 4, center_x + 12);
+                clrtoeol();
                 temp++;
                 break;
             }
         }
         refresh();
 
-        if(temp == 0) {
+        if (temp == 0) {
             break;
         }
     }
-    mvprintw(center_y + 12, center_x+9, ". . .                       ");
-    mvprintw(center_y + 13, center_x+9, "❗Enter < random > in password section to get random passwords !!");
+    mvprintw(center_y + 12, center_x + 9, ". . .                       ");
+    mvprintw(center_y + 13, center_x + 9, "❗Enter < random > in password section to get random passwords !!");
     fclose(fptr);
 
     char password[50];
@@ -368,25 +384,27 @@ int new_user(char *username) {
         move(center_y + 6, center_x + 12);
         getstr(password);
         len = strlen(password);
-        if (len < 7 & strcmp("random",password)!=0) {
-            mvprintw(center_y + 12, center_x+9, "Password must be at least 7 letters!");
+        if (len < 7 & strcmp("random", password) != 0) {
+            mvprintw(center_y + 12, center_x + 9, "Password must be at least 7 letters!");
+            move(center_y + 6, center_x + 12);
+            clrtoeol();
             refresh();
-        }
-        else if(strcmp("random",password)==0){
+        } else if (strcmp("random", password) == 0) {
+            move(center_y + 6, center_x + 12);
             clrtoeol();
             int random_num = 7 + (rand() % 30);
             char chars[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789*&@#$%";
             int lenii = strlen(chars);
             char temp_pass[1000];
-            for(int i=0;i<random_num;i++){
+            for (int i = 0; i < random_num; i++) {
                 int temp = rand() % lenii;
-                temp_pass[i]=chars[temp];
+                temp_pass[i] = chars[temp];
             }
-            mvprintw(center_y + 12, center_x+9, "your random password is <  %s  > ",temp_pass);
+            mvprintw(center_y + 12, center_x + 9, "your random password is <  %s  > ", temp_pass);
         }
     }
-    mvprintw(center_y + 12, center_x+9, ". . .                                     ");
-    mvprintw(center_y + 13, center_x+9, "                                                            ");
+    mvprintw(center_y + 12, center_x + 9, ". . .                                     ");
+    mvprintw(center_y + 13, center_x + 9, "                                                            ");
 
     char email[50];
     int t = 0;
@@ -397,20 +415,19 @@ int new_user(char *username) {
         if (strstr(email, "@") != 0 && strstr(email, ".") != 0) {
             t = 1;
         } else {
-            mvprintw(center_y + 12, center_x+9, "Email is not valid!");
+            mvprintw(center_y + 12, center_x + 9, "Email is not valid!");
             t = 0;
         }
     }
-    mvprintw(center_y + 12, center_x+9, "                    ");
-    fptr= fopen("users.txt","a");
-    fprintf(fptr,"%s %s %s\n",username,password,email);
+    mvprintw(center_y + 12, center_x + 9, "                    ");
+    fptr = fopen("users.txt", "a");
+    fprintf(fptr, "%s %s %s\n", username, password, email);
     fclose(fptr);
     sleep(2);
     clear();
     refresh();
     getch();
 }
-
 int game_menu(char *username){
     initscr();
     keypad(stdscr, TRUE);
@@ -472,7 +489,8 @@ int game_menu(char *username){
     return 0;
 }
 
-int leaderboard(struct user *current_user) {
+int leaderboard(struct user *current_user, int status) {
+    // Initialize ncurses
     initscr();
     keypad(stdscr, TRUE);
     curs_set(0);
@@ -481,66 +499,197 @@ int leaderboard(struct user *current_user) {
     cbreak();
     clear();
 
+    // Calculate center positions
     int max_y, max_x;
     getmaxyx(stdscr, max_y, max_x);
-    int center_y = max_y / 2 -10;
-    int center_x = max_x / 2 -40;
+    int center_y = max_y / 2 - 10;
+    int center_x = max_x / 2 - 40;
 
-    const int COL_WIDTH = 15;
+    // Draw header
     mvprintw(center_y, center_x + 25, "=== LEADERBOARD ===");
     mvprintw(center_y + 2, center_x, "%-10s %-15s %-15s %-15s %-15s %-15s",
              "Rank", "Username", "Score", "Gold", "Games", "Time");
     mvprintw(center_y + 3, center_x, "----------------------------------------------------------------");
 
+    // Try to open leaderboard file
     FILE* fptr = fopen("leaderboard.txt", "r");
     if (fptr == NULL) {
-        mvprintw(center_y + 5, center_x, "No leaderboard data available!");
+        // Initialize new user with default values
+        current_user->total_finished_games = 0;
+        current_user->total_gold = 0;
+        current_user->total_score = 0;
+        current_user->rank = 0;
+        strncpy(current_user->total_time, "00:00:00", sizeof(current_user->total_time) - 1);
+        current_user->total_time[sizeof(current_user->total_time) - 1] = '\0';
+
+        if (status == 1) {
+            // Create new leaderboard file if updating
+            fptr = fopen("leaderboard.txt", "w");
+            if (fptr == NULL) {
+                mvprintw(center_y + 5, center_x, "Error creating leaderboard file!");
+                refresh();
+                getch();
+                endwin();
+                return 0;
+            }
+
+            // Write current user data
+            fprintf(fptr, "%d %s %d %d %d %s\n",
+                    current_user->rank,
+                    current_user->username,
+                    current_user->total_score,
+                    current_user->new_golds,
+                    current_user->total_finished_games,
+                    current_user->total_time);
+            fclose(fptr);
+
+            // Display current user entry
+            mvprintw(center_y + 4, center_x,
+                     "%-10d %-15s %-15d %-15d %-15d %-15s <---",
+                     current_user->rank,
+                     current_user->username,
+                     current_user->total_score,
+                     current_user->new_golds,
+                     current_user->total_finished_games,
+                     current_user->total_time);
+        } else {
+            mvprintw(center_y + 5, center_x, "No leaderboard data available!");
+        }
+
+        mvprintw(center_y + 30, center_x + 10, "[ Press enter to continue ]");
         refresh();
         getch();
+        endwin();
         return 0;
     }
 
-    int found = 0;
-    char rank[100];
-    char username1[100];
-    char total_score[100];
-    char total_gold[100];
-    char total_finished_games[100];
-    char total_time[100];
-    char tempi[100];
-
-    rewind(fptr);
-    while (fgets(tempi, 100, fptr) != NULL) {
-        sscanf(tempi, "%s %s %s %s %s %s", rank, username1, total_score, total_gold, total_finished_games, total_time);
-        if (strcmp(username1, current_user->username) == 0) {
-            found = 1;
-            strcpy(current_user->total_score, total_score);
-            strcpy(current_user->total_gold, total_gold);
-            strcpy(current_user->total_time, total_time);
-            strcpy(current_user->total_finished_games, total_finished_games);
-
-            mvprintw(center_y + 4, center_x, "%-10s %-15s %-15s %-15s %-15s %-15s",
-                     rank,
-                     current_user->username,
-                     current_user->total_score,
-                     current_user->total_gold,
-                     current_user->total_finished_games,
-                     current_user->total_time);
-            break;
+    // Open temporary file if updating
+    FILE* temp = NULL;
+    if (status == 1) {
+        temp = fopen("temp.txt", "w");
+        if (temp == NULL) {
+            mvprintw(center_y + 5, center_x, "Error creating temporary file!");
+            fclose(fptr);
+            refresh();
+            getch();
+            endwin();
+            return 0;
         }
     }
 
-    if (!found) {
-        mvprintw(center_y + 5, center_x, "Player not found in leaderboard!");
+    // Read and process leaderboard entries
+    int found = 0;
+    int rank;
+    char username1[50];
+    int total_score;
+    int total_gold;
+    int total_finished_games;
+    char total_time[20];
+    char tempi[256];
+    int row = 4;
+
+    while (fgets(tempi, sizeof(tempi), fptr) != NULL) {
+
+        if (sscanf(tempi, "%d %s %d %d %d %s", &rank, username1,
+                   &total_score, &total_gold, &total_finished_games, total_time) != 6) {
+            continue;
+        }
+
+        if (strcmp(username1, current_user->username) == 0) {
+            found = 1;
+
+            if (status == 1) {
+                fprintf(temp, "%d %s %d %d %d %s\n",
+                        current_user->rank,
+                        current_user->username,
+                        current_user->total_score,
+                        current_user->new_golds,
+                        current_user->total_finished_games,
+                        current_user->total_time);
+
+                mvprintw(center_y + row, center_x,
+                         "%-10d %-15s %-15d %-15d %-15d %-15s <---",
+                         current_user->rank,
+                         current_user->username,
+                         current_user->total_score,
+                         current_user->new_golds,
+                         current_user->total_finished_games,
+                         current_user->total_time);
+            } else {
+                current_user->rank = rank;
+                current_user->total_score = total_score;
+                current_user->total_gold = total_gold;
+                current_user->total_finished_games = total_finished_games;
+                strncpy(current_user->total_time, total_time, sizeof(current_user->total_time) - 1);
+                current_user->total_time[sizeof(current_user->total_time) - 1] = '\0';
+                current_user->new_golds=0;
+
+                mvprintw(center_y + row, center_x,
+                         "%-10d %-15s %-15d %-15d %-15d %-15s <---",
+                         rank, username1, total_score, total_gold,
+                         total_finished_games, total_time);
+            }
+        } else {
+            // Display other entries
+            mvprintw(center_y + row, center_x,
+                     "%-10d %-15s %-15d %-15d %-15d %-15s",
+                     rank, username1, total_score, total_gold,
+                     total_finished_games, total_time);
+
+            if (status == 1) {
+                fprintf(temp, "%s", tempi);
+            }
+        }
+        row++;
     }
 
+    // Handle case when user is not found
+    if (!found) {
+        if (status == 1) {
+            // Add new user to leaderboard
+            fprintf(temp, "%d %s %d %d %d %s\n",
+                    current_user->rank,
+                    current_user->username,
+                    current_user->total_score,
+                    current_user->new_golds,
+                    current_user->total_finished_games,
+                    current_user->total_time);
+
+            mvprintw(center_y + row, center_x,
+                     "%-10d %-15s %-15d %-15d %-15d %-15s <---",
+                     current_user->rank,
+                     current_user->username,
+                     current_user->total_score,
+                     current_user->new_golds,
+                     current_user->total_finished_games,
+                     current_user->total_time);
+        } else {
+            // Initialize new user with default values
+            mvprintw(center_y + 20, center_x, "Player not found in leaderboard!");
+            current_user->total_finished_games = 0;
+            current_user->total_gold = 0;
+            current_user->total_score = 0;
+            current_user->rank = 0;
+            strncpy(current_user->total_time, "00:00:00", sizeof(current_user->total_time) - 1);
+            current_user->total_time[sizeof(current_user->total_time) - 1] = '\0';
+        }
+    }
+
+
     fclose(fptr);
-    mvprintw(center_y + 30, center_x+10, "[ Press enter to start the game ]");
+    if (status == 1 && temp != NULL) {
+        fclose(temp);
+        remove("leaderboard.txt");
+        rename("temp.txt", "leaderboard.txt");
+    }
+
+    mvprintw(center_y + 30, center_x + 10, "[ Press enter to continue ]");
     refresh();
     getch();
+    endwin();
     return 0;
-}
 
+}
 int gamesetting(struct user *current_user) {
     char *choices[] = {"easy", "medium", "hard"};
     char *colors[] = {"white", "cyan", "green","SPECIAL!"};
@@ -761,6 +910,31 @@ int easy_game(struct user *current_user) {
     getmaxyx(stdscr, max_y, max_x);
     char map[max_y][max_x];
 
+    //--------------------------
+    int visited[max_y][max_x];
+    for(int j=0;j<max_y;j++){
+        for(int i=0;i<max_x;i++){
+            visited[j][i]=0;
+        }
+    }
+
+    int room_number[max_y][max_x];
+    for(int j=0;j<max_y;j++){
+        for(int i=0;i<max_x;i++){
+            room_number[j][i]=0;
+        }
+    }
+
+    int cori_number[max_y][max_x];
+    for(int j=0;j<max_y;j++){
+        for(int i=0;i<max_x;i++){
+            cori_number[j][i]=0;
+        }
+    }
+
+    //.........................
+
+
     for(int i = 0; i < max_y; i++) {
         for(int j = 0; j < max_x; j++) {
             map[i][j] = ' ';
@@ -817,6 +991,7 @@ int easy_game(struct user *current_user) {
                         } else {
                             map[room_y + i][room_x + j] = '.';
                         }
+                        room_number[room_y + i][room_x + j]=num+1; //room number
                     }
                 }
             }
@@ -864,16 +1039,23 @@ int easy_game(struct user *current_user) {
                     char left = map[y1][current_x - 1];
                     char right = map[y1][current_x + 1];
 
-                    if ((left == '_' && right == '#') ||
-                        (left == '#' && right == '_') ) {
+
+                    if(left == '_' && right == '#'){
                         map[y1][current_x] = '+';
-                        map[y1][current_x+1] = '+';
                         map[y1][current_x-1] = '+';
                     }
+
+                    else if(left == '#' && right == '_'){
+                        map[y1][current_x] = '+';
+                        map[y1][current_x+1] = '+';
+                    }
+
                 }
 
                 else if (map[y1][current_x] == ' ') {
                     map[y1][current_x] = '#';
+                    cori_number[y1][current_x]=num+1;
+
                 }
             }
 
@@ -899,17 +1081,16 @@ int easy_game(struct user *current_user) {
                     else if(down == '#' && up == '|'){
                         map[current_y][x2] = '+';
                         map[current_y-1][x2] = '+';
-                        map[current_y+1][x2] = '+';
                     }
                     else if(down == '|' && up == '#'){
                         map[current_y][x2] = '+';
                         map[current_y+1][x2] = '+';
-                        map[current_y-1][x2] = '+';
                     }
 
                 }
                 else if (map[current_y][x2] == ' ') {
                     map[current_y][x2] = '#';
+                    cori_number[current_y][x2]=num+1;
                 }
             }
         }
@@ -917,6 +1098,8 @@ int easy_game(struct user *current_user) {
 
         num++;
     }
+
+    //////////////////////
 
     //pillars
     int num_pillars= 6+ (rand() % 4);
@@ -977,6 +1160,20 @@ int easy_game(struct user *current_user) {
         }
     }
 
+
+
+    int x2 = 0, y2 = 0;
+    int stairs = 0;
+    while(!stairs) {
+        y2 = rand() % max_y  + 1;
+        x2 = rand() % max_x  + 1;
+        if(map[y2][x2]=='.'){
+            map[y2][x2]='<';
+            stairs++;
+        }
+    }
+
+
     //place player randomly on map
     int x = 0, y = 0;
     int player_placed = 0;
@@ -985,6 +1182,15 @@ int easy_game(struct user *current_user) {
         x = rand() % max_x  + 1;
         if(map[y][x] == '.') {
             player_placed = 1;
+        }
+    }
+    int room_num=room_number[y][x];
+
+    for(int i=0;i<max_x;i++){
+        for(int j=0;j<max_y;j++){
+            if(room_number[j][i]==room_num){
+                visited[j][i]=1;
+            }
         }
     }
 
@@ -1002,13 +1208,18 @@ int easy_game(struct user *current_user) {
     int food=10;
     int food1=0;
     int health=10;
+
+
+   ///////////////////////MAIN///////
+
  // printing map (player movement -- map)
     int c;
     int counter=0;
     do {
+        //print map
         for(int i = 0; i < max_y; i++) {
             for(int j = 0; j < max_x; j++) {
-                if(map[i][j] != ' ') {
+                if(map[i][j] != ' ' && visited[i][j]==1) {
                     if(map[i][j]=='|'){
                         attron(COLOR_PAIR(5));
                         mvaddch(i, j, map[i][j]);
@@ -1112,6 +1323,8 @@ int easy_game(struct user *current_user) {
             food--;
         }
         if(health==0){
+            current_user->new_golds+=total_black_gold+total_yellow_gold;
+            current_user->total_gold+=current_user->new_golds;
             return 0;
         }
 
@@ -1136,11 +1349,1657 @@ int easy_game(struct user *current_user) {
 
         counter++;
 
+
         refresh();
+        if( map[new_y][new_x]=='#'){
+            int temp = cori_number[new_y][new_x];
+            for(int j=-4;j<4;j++){
+                for(int i=-4;i<4;i++){
+                    if(cori_number[new_y+j][new_x+i]==temp && map[new_y+j][new_x+i]=='#' && visited[new_y+j][new_x+i]!=1 || map[new_y+j][new_x+i]=='+'&& visited[new_y+j][new_x+i]!=1){
+                        visited[new_y+j][new_x+i]=1;
+                    }
+                }
+            }
+        }
+
+        else if(map[new_y][new_x]=='+' ){
+            int tempp=room_number[new_y][new_x];
+            for(int j1=0;j1<max_y;j1++){
+                for (int i1 = 0; i1 < max_x; i1++) {
+                    if(visited[j1][i1]!=1 && room_number[j1][i1]==tempp){
+                        visited[j1][i1]=1;
+                    }
+                }
+            }
+        }
+
+        if(map[new_y][new_x]=='<'){
+            current_user->food=food;
+            current_user->health=health;
+            current_user->food1=food1;
+            current_user->new_golds=total_black_gold+total_yellow_gold;
+            return easy_game_f2(current_user);
+        }
+
+        if(c=='m'){
+            current_user->food=food;
+            current_user->health=health;
+            current_user->food1=food1;
+            current_user->new_golds=total_black_gold+total_yellow_gold;
+            return easy_game_f4(current_user);
+
+        }
 
     } while ((c = getch()) != 27);
 
     endwin();
+}
+
+
+int easy_game_f2(struct user *current_user) {
+    setlocale(LC_ALL, "");
+    initscr();
+    keypad(stdscr, TRUE);
+    noecho();
+    curs_set(0);
+    int max_y, max_x;
+    getmaxyx(stdscr, max_y, max_x);
+    char map[max_y][max_x];
+
+    //--------------------------
+    int visited[max_y][max_x];
+    for(int j=0;j<max_y;j++){
+        for(int i=0;i<max_x;i++){
+            visited[j][i]=0;
+        }
+    }
+
+    int room_number[max_y][max_x];
+    for(int j=0;j<max_y;j++){
+        for(int i=0;i<max_x;i++){
+            room_number[j][i]=0;
+        }
+    }
+
+    int cori_number[max_y][max_x];
+    for(int j=0;j<max_y;j++){
+        for(int i=0;i<max_x;i++){
+            cori_number[j][i]=0;
+        }
+    }
+
+    //.........................
+
+
+    for(int i = 0; i < max_y; i++) {
+        for(int j = 0; j < max_x; j++) {
+            map[i][j] = ' ';
+        }
+    }
+
+    //number of rooms randomly
+    srand(time(NULL));
+    int number_of_rooms = 6 + (rand() % 2);
+    int num = 0;
+
+    typedef struct {
+        int center_x;
+        int center_y;
+    } RoomCenter;
+    RoomCenter centers[number_of_rooms];
+
+    //generating rooms
+    while (num < number_of_rooms) {
+        int ok = 0;
+        int size_room_y, size_room_x, room_y, room_x;
+
+        while (ok == 0) {
+            size_room_y = 8 + (rand() % 6);
+            size_room_x = 8 + (rand() % 6);
+            room_y = 3 + (rand() % (max_y - size_room_y - 8));
+            room_x = 3 + (rand() % (max_x - size_room_x - 8));
+
+            int padding = 5;
+            int overlap = 0;
+
+            for (int i = -padding; i < size_room_y + padding && !overlap; i++) {
+                for (int j = -padding; j < size_room_x + padding && !overlap; j++) {
+                    if (room_y + i >= 0 && room_y + i < max_y &&
+                        room_x + j >= 0 && room_x + j < max_x) {
+                        if (map[room_y + i][room_x + j] != ' ') {
+                            overlap = 1;
+                        }
+                    }
+                }
+            }
+
+            if (overlap == 0) {
+                ok++;
+            }
+        }
+        for (int i = 0; i < size_room_y; i++) {
+            for (int j = 0; j < size_room_x; j++) {
+                if (room_y + i < max_y && room_x + j < max_x) {
+                    if (i == 0 || i == size_room_y - 1) {
+                        map[room_y + i][room_x + j] = '_';
+                    } else if (j == 0 || j == size_room_x - 1) {
+                        map[room_y + i][room_x + j] = '|';
+                    } else {
+                        map[room_y + i][room_x + j] = '.';
+                    }
+                    room_number[room_y + i][room_x + j]=num+1; //room number
+                }
+            }
+        }
+
+        //corridors
+        centers[num].center_y = room_y + (size_room_y / 2);
+        centers[num].center_x = room_x + (size_room_x / 2);
+
+        if (num > 0) {
+            int y1 = centers[num].center_y;
+            int x1 = centers[num].center_x;
+            int y2 = centers[num-1].center_y;
+            int x2 = centers[num-1].center_x;
+
+            int current_x = x1;
+            while (current_x != x2) {
+                if (current_x < x2) current_x++;
+                else current_x--;
+
+                if (current_x <= 0 || current_x >= max_x - 1) {
+                    continue;
+                }
+
+                if (map[y1][current_x] == '|') {
+                    char left = map[y1][current_x-1];
+                    char right = map[y1][current_x+1];
+
+                    if ((left == '.' && right == ' ') ||
+                        (left == ' ' && right == '.') ||
+                        (left == '#' && right == '.') ||
+                        (left == '.' && right == '#')) {
+                        map[y1][current_x] = '+';
+                    }
+                    else if(left == '_' && right == '#'){
+                        map[y1][current_x] = '+';
+                        map[y1][current_x-1] = '+';
+                    }
+                    else if(left == '#' && right == '+'){
+                        map[y1][current_x] = '+';
+                        map[y1][current_x+1] ='+';
+                    }
+                }
+
+                else if (map[y1][current_x] == '_') {
+                    char left = map[y1][current_x - 1];
+                    char right = map[y1][current_x + 1];
+
+                    if ((left == '_' && right == '#') ||
+                        (left == '#' && right == '_') ) {
+                        map[y1][current_x] = '+';
+                        map[y1][current_x+1] = '+';
+                        map[y1][current_x-1] = '+';
+                    }
+                }
+
+                else if (map[y1][current_x] == ' ') {
+                    map[y1][current_x] = '#';
+                    cori_number[y1][current_x]=num+1;
+                }
+            }
+
+            int current_y = y1;
+            while (current_y != y2) {
+                if (current_y < y2) current_y++;
+                else current_y--;
+
+                if (current_y <= 0 || current_y >= max_y - 1) {
+                    continue;
+                }
+
+                if (map[current_y][x2] == '_') {
+                    char up = map[current_y-1][x2];
+                    char down = map[current_y+1][x2];
+
+                    if ((down == ' ' && up == '.') ||
+                        (down == '.' && up == ' ') ||
+                        (down == '.' && up == '#') ||
+                        (down == '#' && up == '.')) {
+                        map[current_y][x2] = '+';
+                    }
+                    else if(down == '#' && up == '|'){
+                        map[current_y][x2] = '+';
+                        map[current_y-1][x2] = '+';
+                        map[current_y+1][x2] = '+';
+                    }
+                    else if(down == '|' && up == '#'){
+                        map[current_y][x2] = '+';
+                        map[current_y+1][x2] = '+';
+                        map[current_y-1][x2] = '+';
+                    }
+
+                }
+                else if (map[current_y][x2] == ' ') {
+                    map[current_y][x2] = '#';
+                    cori_number[current_y][x2]=num+1;
+                }
+            }
+        }
+
+
+        num++;
+    }
+
+    //////////////////////
+
+    //pillars
+    int num_pillars= 6+ (rand() % 4);
+    int np=0 ,py ,px;
+    while(np<num_pillars){
+        py = rand() % max_y  + 1;
+        px = rand() % max_x  + 1;
+        if(map[py][px]=='.'){
+            map[py][px]='O';
+            np++;
+        }
+    }
+    //traps
+    int num_traps= 3+ (rand() % 4);
+    int nt=0 ,ty ,tx;
+    while(nt<num_traps){
+        ty = rand() % max_y  + 1;
+        tx = rand() % max_x  + 1;
+        if(map[ty][tx]=='.'){
+            map[ty][tx]='T';
+            nt++;
+        }
+    }
+
+    //foods
+    int num_foods= 10+ (rand() % 6);
+    int nf=0 ,fy ,fx;
+    while(nf<num_foods){
+        fy = rand() % max_y  + 1;
+        fx = rand() % max_x  + 1;
+        if(map[fy][fx]=='.'){
+            map[fy][fx]='F';
+            nf++;
+        }
+    }
+
+    //yellow golds
+    int num_ygolds= 6 + (rand() % 4);
+    int nyg=0 ,gy ,gx;
+    while(nyg<num_ygolds){
+        gy = rand() % max_y  + 1;
+        gx = rand() % max_x  + 1;
+        if(map[gy][gx]=='.'){
+            map[gy][gx]='$';
+            nyg++;
+        }
+    }
+
+    //black golds
+    int num_bgolds= 4 + (rand() % 1);
+    int nbg=0 ,by ,bx;
+    while(nbg<num_bgolds){
+        by = rand() % max_y  + 1;
+        bx = rand() % max_x  + 1;
+        if(map[by][bx]=='.'){
+            map[by][bx]='@';
+            nbg++;
+        }
+    }
+
+
+    int x2 = 0, y2 = 0;
+    int stairs = 0;
+    while(!stairs) {
+        y2 = rand() % max_y  + 1;
+        x2 = rand() % max_x  + 1;
+        if(map[y2][x2]=='.'){
+            map[y2][x2]='<';
+            stairs++;
+        }
+    }
+    int y=y2;
+    int x=x2;
+
+    int room_num=room_number[y][x];
+
+    for(int i=0;i<max_x;i++){
+        for(int j=0;j<max_y;j++){
+            if(room_number[j][i]==room_num){
+                visited[j][i]=1;
+            }
+        }
+    }
+
+    stairs = 0;
+    while(!stairs) {
+        y2 = rand() % max_y  + 1;
+        x2 = rand() % max_x  + 1;
+        if(map[y2][x2]=='.'){
+            map[y2][x2]='<';
+            stairs++;
+        }
+    }
+
+    clear();
+
+    init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
+    init_pair(6, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(7, COLOR_BLACK, COLOR_WHITE);
+    init_pair(8, COLOR_YELLOW, COLOR_RED);
+    ////////////////////
+    int total_yellow_gold=0;
+    int total_black_gold=0;
+    /////////////////////
+
+    int food=current_user->food;
+    int food1=current_user->food1;
+    int health=current_user->health;
+
+
+    ///////////////////////MAIN///////
+
+    // printing map (player movement -- map)
+    int c;
+    int counter=0;
+    do {
+        //print map
+        for(int i = 0; i < max_y; i++) {
+            for(int j = 0; j < max_x; j++) {
+                if(map[i][j] != ' ' && visited[i][j]==1) {
+                    if(map[i][j]=='|'){
+                        attron(COLOR_PAIR(5));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(5));
+                    }
+                    else if(map[i][j]=='O'){
+                        attron(COLOR_PAIR(5));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(5));
+                    }
+                    else if(map[i][j]=='$'){
+                        attron(COLOR_PAIR(6));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(6));
+                    }
+                    else if(map[i][j]=='@'){
+                        attron(COLOR_PAIR(7));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(7));
+                    }
+                    else if(map[i][j]=='F'){
+                        attron(COLOR_PAIR(8));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(8));
+                    }
+                    else if(map[i][j]=='T'){
+                        mvaddch(i, j, '.');
+                    }
+                    else if(map[i][j]=='^'){
+                        mvaddch(i, j, map[i][j]);
+                    }
+                    else {
+                        mvaddch(i, j, map[i][j]);
+                    }
+
+                }
+            }
+        }
+
+        int new_y = y;
+        int new_x = x;
+
+        if(c ==101) { ///food window
+            clear();
+            int p= food_bar(&food1, &health, &food);
+            if(p==3){
+                continue;
+            }
+            c = getch();
+        }
+        if (c == KEY_UP && y > 0) new_y--;
+        if (c == KEY_DOWN && y < max_y - 1) new_y++;
+        if (c == KEY_RIGHT && x < max_x - 1) new_x++;
+        if (c == KEY_LEFT && x > 0) new_x--;
+
+        if(map[new_y][new_x] == '.' || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '+' ||
+           map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^') {
+            if(map[new_y][new_x] == '$'){
+                int temp = 2 + (rand() % 3 );
+                mvprintw(2,3,"You received %d GOLDS !",temp);
+                total_yellow_gold+= temp;
+            }
+            if(map[new_y][new_x] == '@'){
+                int temp = 6 + (rand() % 4 );
+                mvprintw(2,3,"You received %d GOLDS !",temp);
+                total_black_gold+= temp;
+            }
+            if(map[new_y][new_x] == 'F'){
+                int temp = 1;
+                mvprintw(2,3,"You received %d FOOD !",temp);
+                food1+= 1;
+                if(food1>5){
+                    food1=5;
+                }
+            }
+
+            if(map[new_y][new_x] == 'T'){
+                int temp = 1;
+                mvprintw(2,3,"You stepped on a TRAP !",temp);
+                health=health-2;
+                refresh();
+                map[new_y][new_x]='^';
+            }
+
+
+            y = new_y;
+            x = new_x;
+        }
+
+        if(map[y][x]!='+' && map[y][x]!='#'&&map[y][x]!='^'){
+            map[y][x]='.';
+        }
+        mvprintw(max_y-2,max_x-10,"GOLD: %d",current_user->new_golds+total_black_gold+total_yellow_gold);
+        draw_character(y, x, current_user->game_setting.player_color);
+
+        if(counter==20){
+            health--;
+            counter=0;
+        }
+        if(counter==15){
+            food--;
+        }
+        if(health==0){
+            current_user->new_golds+=total_black_gold+total_yellow_gold;
+            current_user->total_gold+=current_user->new_golds;
+            return 0;
+        }
+
+        //health
+        mvprintw(max_y-2,2,"health: ");
+        refresh();
+        for(int i =0;i<=health;i++){
+            mvprintw(max_y-2,10+i,"♥");
+            mvprintw(max_y-2,10+health," ");
+            for(int j=0;j<10-i;j++){
+                mvprintw(max_y-2,10+health+j," ");
+            }
+        }
+
+        //food
+        mvprintw(max_y-2,24,"food: ");
+
+        for(int i =0;i<=food;i++){
+            mvprintw(max_y-2,30+i,"+");
+            mvprintw(max_y-2,30+food," ");
+        }
+
+        counter++;
+
+
+        refresh();
+        if( map[new_y][new_x]=='#'){
+            int temp = cori_number[new_y][new_x];
+            for(int j=-4;j<4;j++){
+                for(int i=-4;i<4;i++){
+                    if(cori_number[new_y+j][new_x+i]==temp && map[new_y+j][new_x+i]=='#' && visited[new_y+j][new_x+i]!=1 || map[new_y+j][new_x+i]=='+'){
+                        visited[new_y+j][new_x+i]=1;
+                    }
+                }
+            }
+        }
+
+        else if(map[new_y][new_x]=='+' &&(map[new_y+1][new_x]=='.' || map[new_y-1][new_x]=='.' || map[new_y][new_x+1]=='.' || map[new_y][new_x-1]=='.' )){
+            int tempp=room_number[new_y][new_x];
+            for(int j1=0;j1<max_y;j1++){
+                for (int i1 = 0; i1 < max_x; i1++) {
+                    if(visited[j1][i1]!=1 && room_number[j1][i1]==tempp){
+                        visited[j1][i1]=1;
+                    }
+                }
+            }
+        }
+
+        if(map[new_y][new_x]=='<'){
+            current_user->food=food;
+            current_user->health=health;
+            current_user->food1=food1;
+            current_user->new_golds+=total_black_gold+total_yellow_gold;
+            return easy_game_f3(current_user);
+        }
+
+    } while ((c = getch()) != 27);
+
+    endwin();
+}
+
+
+int easy_game_f3(struct user *current_user) {
+    setlocale(LC_ALL, "");
+    initscr();
+    keypad(stdscr, TRUE);
+    noecho();
+    curs_set(0);
+    int max_y, max_x;
+    getmaxyx(stdscr, max_y, max_x);
+    char map[max_y][max_x];
+
+    //--------------------------
+    int visited[max_y][max_x];
+    for(int j=0;j<max_y;j++){
+        for(int i=0;i<max_x;i++){
+            visited[j][i]=0;
+        }
+    }
+
+    int room_number[max_y][max_x];
+    for(int j=0;j<max_y;j++){
+        for(int i=0;i<max_x;i++){
+            room_number[j][i]=0;
+        }
+    }
+
+    int cori_number[max_y][max_x];
+    for(int j=0;j<max_y;j++){
+        for(int i=0;i<max_x;i++){
+            cori_number[j][i]=0;
+        }
+    }
+
+    //.........................
+
+
+    for(int i = 0; i < max_y; i++) {
+        for(int j = 0; j < max_x; j++) {
+            map[i][j] = ' ';
+        }
+    }
+
+    //number of rooms randomly
+    srand(time(NULL));
+    int number_of_rooms = 6 + (rand() % 2);
+    int num = 0;
+
+    typedef struct {
+        int center_x;
+        int center_y;
+    } RoomCenter;
+    RoomCenter centers[number_of_rooms];
+
+    //generating rooms
+    while (num < number_of_rooms) {
+        int ok = 0;
+        int size_room_y, size_room_x, room_y, room_x;
+
+        while (ok == 0) {
+            size_room_y = 8 + (rand() % 6);
+            size_room_x = 8 + (rand() % 6);
+            room_y = 3 + (rand() % (max_y - size_room_y - 8));
+            room_x = 3 + (rand() % (max_x - size_room_x - 8));
+
+            int padding = 5;
+            int overlap = 0;
+
+            for (int i = -padding; i < size_room_y + padding && !overlap; i++) {
+                for (int j = -padding; j < size_room_x + padding && !overlap; j++) {
+                    if (room_y + i >= 0 && room_y + i < max_y &&
+                        room_x + j >= 0 && room_x + j < max_x) {
+                        if (map[room_y + i][room_x + j] != ' ') {
+                            overlap = 1;
+                        }
+                    }
+                }
+            }
+
+            if (overlap == 0) {
+                ok++;
+            }
+        }
+        for (int i = 0; i < size_room_y; i++) {
+            for (int j = 0; j < size_room_x; j++) {
+                if (room_y + i < max_y && room_x + j < max_x) {
+                    if (i == 0 || i == size_room_y - 1) {
+                        map[room_y + i][room_x + j] = '_';
+                    } else if (j == 0 || j == size_room_x - 1) {
+                        map[room_y + i][room_x + j] = '|';
+                    } else {
+                        map[room_y + i][room_x + j] = '.';
+                    }
+                    room_number[room_y + i][room_x + j]=num+1; //room number
+                }
+            }
+        }
+
+        //corridors
+        centers[num].center_y = room_y + (size_room_y / 2);
+        centers[num].center_x = room_x + (size_room_x / 2);
+
+        if (num > 0) {
+            int y1 = centers[num].center_y;
+            int x1 = centers[num].center_x;
+            int y2 = centers[num-1].center_y;
+            int x2 = centers[num-1].center_x;
+
+            int current_x = x1;
+            while (current_x != x2) {
+                if (current_x < x2) current_x++;
+                else current_x--;
+
+                if (current_x <= 0 || current_x >= max_x - 1) {
+                    continue;
+                }
+
+                if (map[y1][current_x] == '|') {
+                    char left = map[y1][current_x-1];
+                    char right = map[y1][current_x+1];
+
+                    if ((left == '.' && right == ' ') ||
+                        (left == ' ' && right == '.') ||
+                        (left == '#' && right == '.') ||
+                        (left == '.' && right == '#')) {
+                        map[y1][current_x] = '+';
+                    }
+                    else if(left == '_' && right == '#'){
+                        map[y1][current_x] = '+';
+                        map[y1][current_x-1] = '+';
+                    }
+                    else if(left == '#' && right == '+'){
+                        map[y1][current_x] = '+';
+                        map[y1][current_x+1] ='+';
+                    }
+                }
+
+                else if (map[y1][current_x] == '_') {
+                    char left = map[y1][current_x - 1];
+                    char right = map[y1][current_x + 1];
+
+                    if ((left == '_' && right == '#') ||
+                        (left == '#' && right == '_') ) {
+                        map[y1][current_x] = '+';
+                        map[y1][current_x+1] = '+';
+                        map[y1][current_x-1] = '+';
+                    }
+                }
+
+                else if (map[y1][current_x] == ' ') {
+                    map[y1][current_x] = '#';
+                    cori_number[y1][current_x]=num+1;
+                }
+            }
+
+            int current_y = y1;
+            while (current_y != y2) {
+                if (current_y < y2) current_y++;
+                else current_y--;
+
+                if (current_y <= 0 || current_y >= max_y - 1) {
+                    continue;
+                }
+
+                if (map[current_y][x2] == '_') {
+                    char up = map[current_y-1][x2];
+                    char down = map[current_y+1][x2];
+
+                    if ((down == ' ' && up == '.') ||
+                        (down == '.' && up == ' ') ||
+                        (down == '.' && up == '#') ||
+                        (down == '#' && up == '.')) {
+                        map[current_y][x2] = '+';
+                    }
+                    else if(down == '#' && up == '|'){
+                        map[current_y][x2] = '+';
+                        map[current_y-1][x2] = '+';
+                        map[current_y+1][x2] = '+';
+                    }
+                    else if(down == '|' && up == '#'){
+                        map[current_y][x2] = '+';
+                        map[current_y+1][x2] = '+';
+                        map[current_y-1][x2] = '+';
+                    }
+
+                }
+                else if (map[current_y][x2] == ' ') {
+                    map[current_y][x2] = '#';
+                    cori_number[current_y][x2]=num+1;
+                }
+            }
+        }
+
+
+        num++;
+    }
+
+    //////////////////////
+
+    //pillars
+    int num_pillars= 6+ (rand() % 4);
+    int np=0 ,py ,px;
+    while(np<num_pillars){
+        py = rand() % max_y  + 1;
+        px = rand() % max_x  + 1;
+        if(map[py][px]=='.'){
+            map[py][px]='O';
+            np++;
+        }
+    }
+    //traps
+    int num_traps= 3+ (rand() % 4);
+    int nt=0 ,ty ,tx;
+    while(nt<num_traps){
+        ty = rand() % max_y  + 1;
+        tx = rand() % max_x  + 1;
+        if(map[ty][tx]=='.'){
+            map[ty][tx]='T';
+            nt++;
+        }
+    }
+
+    //foods
+    int num_foods= 10+ (rand() % 6);
+    int nf=0 ,fy ,fx;
+    while(nf<num_foods){
+        fy = rand() % max_y  + 1;
+        fx = rand() % max_x  + 1;
+        if(map[fy][fx]=='.'){
+            map[fy][fx]='F';
+            nf++;
+        }
+    }
+
+    //yellow golds
+    int num_ygolds= 6 + (rand() % 4);
+    int nyg=0 ,gy ,gx;
+    while(nyg<num_ygolds){
+        gy = rand() % max_y  + 1;
+        gx = rand() % max_x  + 1;
+        if(map[gy][gx]=='.'){
+            map[gy][gx]='$';
+            nyg++;
+        }
+    }
+
+    //black golds
+    int num_bgolds= 4 + (rand() % 1);
+    int nbg=0 ,by ,bx;
+    while(nbg<num_bgolds){
+        by = rand() % max_y  + 1;
+        bx = rand() % max_x  + 1;
+        if(map[by][bx]=='.'){
+            map[by][bx]='@';
+            nbg++;
+        }
+    }
+
+
+    int x2 = 0, y2 = 0;
+    int stairs = 0;
+    while(!stairs) {
+        y2 = rand() % max_y  + 1;
+        x2 = rand() % max_x  + 1;
+        if(map[y2][x2]=='.'){
+            map[y2][x2]='<';
+            stairs++;
+        }
+    }
+    int y=y2;
+    int x=x2;
+
+    int room_num=room_number[y][x];
+
+    for(int i=0;i<max_x;i++){
+        for(int j=0;j<max_y;j++){
+            if(room_number[j][i]==room_num){
+                visited[j][i]=1;
+            }
+        }
+    }
+
+    stairs = 0;
+    while(!stairs) {
+        y2 = rand() % max_y  + 1;
+        x2 = rand() % max_x  + 1;
+        if(map[y2][x2]=='.'){
+            map[y2][x2]='<';
+            stairs++;
+        }
+    }
+
+
+
+
+
+    clear();
+
+    init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
+    init_pair(6, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(7, COLOR_BLACK, COLOR_WHITE);
+    init_pair(8, COLOR_YELLOW, COLOR_RED);
+    ////////////////////
+    int total_yellow_gold=0;
+    int total_black_gold=0;
+    /////////////////////
+
+    int food=current_user->food;
+    int food1=current_user->food1;
+    int health=current_user->health;
+
+
+    ///////////////////////MAIN///////
+
+    // printing map (player movement -- map)
+    int c;
+    int counter=0;
+    do {
+        //print map
+        for(int i = 0; i < max_y; i++) {
+            for(int j = 0; j < max_x; j++) {
+                if(map[i][j] != ' ' && visited[i][j]==1) {
+                    if(map[i][j]=='|'){
+                        attron(COLOR_PAIR(5));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(5));
+                    }
+                    else if(map[i][j]=='O'){
+                        attron(COLOR_PAIR(5));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(5));
+                    }
+                    else if(map[i][j]=='$'){
+                        attron(COLOR_PAIR(6));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(6));
+                    }
+                    else if(map[i][j]=='@'){
+                        attron(COLOR_PAIR(7));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(7));
+                    }
+                    else if(map[i][j]=='F'){
+                        attron(COLOR_PAIR(8));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(8));
+                    }
+                    else if(map[i][j]=='T'){
+                        mvaddch(i, j, '.');
+                    }
+                    else if(map[i][j]=='^'){
+                        mvaddch(i, j, map[i][j]);
+                    }
+                    else {
+                        mvaddch(i, j, map[i][j]);
+                    }
+
+                }
+            }
+        }
+
+        int new_y = y;
+        int new_x = x;
+
+        if(c ==101) { ///food window
+            clear();
+            int p= food_bar(&food1, &health, &food);
+            if(p==3){
+                continue;
+            }
+            c = getch();
+        }
+        if (c == KEY_UP && y > 0) new_y--;
+        if (c == KEY_DOWN && y < max_y - 1) new_y++;
+        if (c == KEY_RIGHT && x < max_x - 1) new_x++;
+        if (c == KEY_LEFT && x > 0) new_x--;
+
+        if(map[new_y][new_x] == '.' || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '+' ||
+           map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^') {
+            if(map[new_y][new_x] == '$'){
+                int temp = 2 + (rand() % 3 );
+                mvprintw(2,3,"You received %d GOLDS !",temp);
+                total_yellow_gold+= temp;
+            }
+            if(map[new_y][new_x] == '@'){
+                int temp = 6 + (rand() % 4 );
+                mvprintw(2,3,"You received %d GOLDS !",temp);
+                total_black_gold+= temp;
+            }
+            if(map[new_y][new_x] == 'F'){
+                int temp = 1;
+                mvprintw(2,3,"You received %d FOOD !",temp);
+                food1+= 1;
+                if(food1>5){
+                    food1=5;
+                }
+            }
+
+            if(map[new_y][new_x] == 'T'){
+                int temp = 1;
+                mvprintw(2,3,"You stepped on a TRAP !",temp);
+                health=health-2;
+                refresh();
+                map[new_y][new_x]='^';
+            }
+
+
+            y = new_y;
+            x = new_x;
+        }
+
+        if(map[y][x]!='+' && map[y][x]!='#'&&map[y][x]!='^'){
+            map[y][x]='.';
+        }
+        mvprintw(max_y-2,max_x-10,"GOLD: %d",current_user->new_golds+total_black_gold+total_yellow_gold);
+        draw_character(y, x, current_user->game_setting.player_color);
+
+        if(counter==20){
+            health--;
+            counter=0;
+        }
+        if(counter==15){
+            food--;
+        }
+        if(health==0){
+            current_user->new_golds+=total_black_gold+total_yellow_gold;
+            current_user->total_gold+=current_user->new_golds;
+            return 0;
+        }
+
+        //health
+        mvprintw(max_y-2,2,"health: ");
+        refresh();
+        for(int i =0;i<=health;i++){
+            mvprintw(max_y-2,10+i,"♥");
+            mvprintw(max_y-2,10+health," ");
+            for(int j=0;j<10-i;j++){
+                mvprintw(max_y-2,10+health+j," ");
+            }
+        }
+
+        //food
+        mvprintw(max_y-2,24,"food: ");
+
+        for(int i =0;i<=food;i++){
+            mvprintw(max_y-2,30+i,"+");
+            mvprintw(max_y-2,30+food," ");
+        }
+
+        counter++;
+
+
+        refresh();
+        if( map[new_y][new_x]=='#'){
+            int temp = cori_number[new_y][new_x];
+            for(int j=-4;j<4;j++){
+                for(int i=-4;i<4;i++){
+                    if(cori_number[new_y+j][new_x+i]==temp && map[new_y+j][new_x+i]=='#' && visited[new_y+j][new_x+i]!=1 || map[new_y+j][new_x+i]=='+'){
+                        visited[new_y+j][new_x+i]=1;
+                    }
+                }
+            }
+        }
+
+        else if(map[new_y][new_x]=='+' &&(map[new_y+1][new_x]=='.' || map[new_y-1][new_x]=='.' || map[new_y][new_x+1]=='.' || map[new_y][new_x-1]=='.' )){
+            int tempp=room_number[new_y][new_x];
+            for(int j1=0;j1<max_y;j1++){
+                for (int i1 = 0; i1 < max_x; i1++) {
+                    if(visited[j1][i1]!=1 && room_number[j1][i1]==tempp){
+                        visited[j1][i1]=1;
+                    }
+                }
+            }
+        }
+
+        if(map[new_y][new_x]=='<'){
+            current_user->food=food;
+            current_user->health=health;
+            current_user->food1=food1;
+            current_user->new_golds+=total_black_gold+total_yellow_gold;
+            return easy_game_f4(current_user);
+        }
+
+    } while ((c = getch()) != 27);
+
+    endwin();
+}
+
+
+int easy_game_f4(struct user *current_user) {
+    setlocale(LC_ALL, "");
+    initscr();
+    keypad(stdscr, TRUE);
+    noecho();
+    curs_set(0);
+    int max_y, max_x;
+    getmaxyx(stdscr, max_y, max_x);
+    char map[max_y][max_x];
+
+    //--------------------------
+    int visited[max_y][max_x];
+    for(int j=0;j<max_y;j++){
+        for(int i=0;i<max_x;i++){
+            visited[j][i]=0;
+        }
+    }
+
+    int room_number[max_y][max_x];
+    for(int j=0;j<max_y;j++){
+        for(int i=0;i<max_x;i++){
+            room_number[j][i]=0;
+        }
+    }
+
+    int cori_number[max_y][max_x];
+    for(int j=0;j<max_y;j++){
+        for(int i=0;i<max_x;i++){
+            cori_number[j][i]=0;
+        }
+    }
+
+    //.........................
+
+
+    for(int i = 0; i < max_y; i++) {
+        for(int j = 0; j < max_x; j++) {
+            map[i][j] = ' ';
+        }
+    }
+
+    //number of rooms randomly
+    srand(time(NULL));
+    int number_of_rooms = 5 + (rand() % 2);
+    int num = 0;
+
+    typedef struct {
+        int center_x;
+        int center_y;
+        int room_x;
+        int room_y;
+        int room_x_size;
+        int room_y_size;
+
+    } RoomCenter;
+    RoomCenter centers[number_of_rooms];
+
+    //generating rooms
+    while (num < number_of_rooms) {
+        int ok = 0;
+        int size_room_y, size_room_x, room_y, room_x;
+
+        while (ok == 0) {
+
+            if(num==number_of_rooms-1){
+                size_room_y = 10 + (rand() % 6);
+                size_room_x = 10 + (rand() % 6);
+
+            }
+            else{
+                size_room_y = 8 + (rand() % 6);
+                size_room_x = 8 + (rand() % 6);
+            }
+
+            room_y = 3 + (rand() % (max_y - size_room_y - 8));
+            room_x = 3 + (rand() % (max_x - size_room_x - 8));
+
+            int padding = 5;
+            int overlap = 0;
+
+            for (int i = -padding; i < size_room_y + padding && !overlap; i++) {
+                for (int j = -padding; j < size_room_x + padding && !overlap; j++) {
+                    if (room_y + i >= 0 && room_y + i < max_y &&
+                        room_x + j >= 0 && room_x + j < max_x) {
+                        if (map[room_y + i][room_x + j] != ' ') {
+                            overlap = 1;
+                        }
+                    }
+                }
+            }
+
+            if (overlap == 0) {
+                ok++;
+            }
+        }
+        for (int i = 0; i < size_room_y; i++) {
+            for (int j = 0; j < size_room_x; j++) {
+                if (room_y + i < max_y && room_x + j < max_x) {
+                    if (i == 0 || i == size_room_y - 1) {
+                        map[room_y + i][room_x + j] = '_';
+                    } else if (j == 0 || j == size_room_x - 1) {
+                        map[room_y + i][room_x + j] = '|';
+                    } else {
+                        map[room_y + i][room_x + j] = '.';
+                    }
+                    room_number[room_y + i][room_x + j]=num+1; //room number
+                }
+            }
+        }
+
+        //corridors
+        centers[num].center_y = room_y + (size_room_y / 2);
+        centers[num].center_x = room_x + (size_room_x / 2);
+        centers[num].room_y=room_y;
+        centers[num].room_x=room_x;
+        centers[num].room_y_size=size_room_y;
+        centers[num].room_x_size=size_room_x;
+
+
+        if (num > 0) {
+            int y1 = centers[num].center_y;
+            int x1 = centers[num].center_x;
+            int y2 = centers[num-1].center_y;
+            int x2 = centers[num-1].center_x;
+
+            int current_x = x1;
+            while (current_x != x2) {
+                if (current_x < x2) current_x++;
+                else current_x--;
+
+                if (current_x <= 0 || current_x >= max_x - 1) {
+                    continue;
+                }
+
+                if (map[y1][current_x] == '|') {
+                    char left = map[y1][current_x-1];
+                    char right = map[y1][current_x+1];
+
+                    if ((left == '.' && right == ' ') ||
+                        (left == ' ' && right == '.') ||
+                        (left == '#' && right == '.') ||
+                        (left == '.' && right == '#')) {
+                        map[y1][current_x] = '+';
+                    }
+                    else if(left == '_' && right == '#'){
+                        map[y1][current_x] = '+';
+                        map[y1][current_x-1] = '+';
+                    }
+                    else if(left == '#' && right == '+'){
+                        map[y1][current_x] = '+';
+                        map[y1][current_x+1] ='+';
+                    }
+                }
+
+                else if (map[y1][current_x] == '_') {
+                    char left = map[y1][current_x - 1];
+                    char right = map[y1][current_x + 1];
+
+                    if ((left == '_' && right == '#') ||
+                        (left == '#' && right == '_') ) {
+                        map[y1][current_x] = '+';
+                        map[y1][current_x+1] = '+';
+                        map[y1][current_x-1] = '+';
+                    }
+                }
+
+                else if (map[y1][current_x] == ' ') {
+                    map[y1][current_x] = '#';
+                    cori_number[y1][current_x]=num+1;
+                }
+            }
+
+            int current_y = y1;
+            while (current_y != y2) {
+                if (current_y < y2) current_y++;
+                else current_y--;
+
+                if (current_y <= 0 || current_y >= max_y - 1) {
+                    continue;
+                }
+
+                if (map[current_y][x2] == '_') {
+                    char up = map[current_y-1][x2];
+                    char down = map[current_y+1][x2];
+
+                    if ((down == ' ' && up == '.') ||
+                        (down == '.' && up == ' ') ||
+                        (down == '.' && up == '#') ||
+                        (down == '#' && up == '.')) {
+                        map[current_y][x2] = '+';
+                    }
+                    else if(down == '#' && up == '|'){
+                        map[current_y][x2] = '+';
+                        map[current_y-1][x2] = '+';
+                        map[current_y+1][x2] = '+';
+                    }
+                    else if(down == '|' && up == '#'){
+                        map[current_y][x2] = '+';
+                        map[current_y+1][x2] = '+';
+                        map[current_y-1][x2] = '+';
+                    }
+
+                }
+                else if (map[current_y][x2] == ' ') {
+                    map[current_y][x2] = '#';
+                    cori_number[current_y][x2]=num+1;
+                }
+            }
+        }
+
+
+        num++;
+    }
+
+    //////////////////////
+
+    //pillars
+    int num_pillars= 6+ (rand() % 4);
+    int np=0 ,py ,px;
+    while(np<num_pillars){
+        py = rand() % max_y  + 1;
+        px = rand() % max_x  + 1;
+        if(map[py][px]=='.' && room_number[py][px]!=number_of_rooms){
+            map[py][px]='O';
+            np++;
+        }
+    }
+    //traps
+    int num_traps= 3+ (rand() % 4);
+    int nt=0 ,ty ,tx;
+    while(nt<num_traps){
+        ty = rand() % max_y  + 1;
+        tx = rand() % max_x  + 1;
+        if(map[ty][tx]=='.' && room_number[ty][tx]!=number_of_rooms){
+            map[ty][tx]='T';
+            nt++;
+        }
+    }
+
+    int num_traps1= 16+ (rand() % 6);
+    nt=0; ty=0; tx=0;
+    while(nt<num_traps1){
+        ty = centers[number_of_rooms-1].room_y + rand() % centers[number_of_rooms-1].room_y_size  + 1;
+        tx = centers[number_of_rooms-1].room_x + rand() % centers[number_of_rooms-1].room_x_size  + 1;
+        if(map[ty][tx]=='.' && room_number[ty][tx]==number_of_rooms){
+            map[ty][tx]='T';
+            nt++;
+        }
+    }
+
+
+    //foods
+    int num_foods= 10+ (rand() % 6);
+    int nf=0 ,fy ,fx;
+    while(nf<num_foods){
+        fy = rand() % max_y  + 1;
+        fx = rand() % max_x  + 1;
+        if(map[fy][fx]=='.' && room_number[fy][fx]!=number_of_rooms){
+            map[fy][fx]='F';
+            nf++;
+        }
+    }
+
+    //yellow golds
+    int num_ygolds= 6 + (rand() % 4);
+    int nyg=0 ,gy ,gx;
+    while(nyg<num_ygolds){
+        gy = rand() % max_y  + 1;
+        gx = rand() % max_x  + 1;
+        if(map[gy][gx]=='.' && room_number[gy][gx]!=number_of_rooms){
+            map[gy][gx]='$';
+            nyg++;
+        }
+    }
+
+
+    int num_ygolds1= 15 + (rand() % 6);
+    nyg=0;
+    gy=0;
+    gx=0;
+    while(nyg<num_ygolds1){
+        gy = centers[number_of_rooms-1].room_y + rand() % centers[number_of_rooms-1].room_y_size  + 1;
+        gx = centers[number_of_rooms-1].room_x + rand() % centers[number_of_rooms-1].room_x_size  + 1;
+        if(map[gy][gx]=='.' && room_number[gy][gx]==number_of_rooms){
+            map[gy][gx]='$';
+            nyg++;
+        }
+    }
+
+    //black golds
+
+    int num_bgolds= 4 + (rand() % 1);
+    int nbg=0 ,by ,bx;
+    while(nbg<num_bgolds){
+        by = rand() % max_y  + 1;
+        bx = rand() % max_x  + 1;
+        if(map[by][bx]=='.' && room_number[by][bx]!=number_of_rooms ){
+            map[by][bx]='@';
+            nbg++;
+        }
+    }
+
+    num_bgolds= 4 + (rand() % 1);
+    nbg=0 ,by=0 ,bx=0;
+    while(nbg<num_bgolds){
+        by = centers[number_of_rooms-1].room_y + rand() % centers[number_of_rooms-1].room_y_size  + 1;
+        bx = centers[number_of_rooms-1].room_x + rand() % centers[number_of_rooms-1].room_x_size  + 1;
+        if(map[by][bx]=='.' && room_number[by][bx]==number_of_rooms){
+            map[by][bx]='@';
+            nbg++;
+        }
+    }
+
+
+    int x2 = 0, y2 = 0;
+    int stairs = 0;
+    while(!stairs) {
+        y2 = rand() % max_y  + 1;
+        x2 = rand() % max_x  + 1;
+        if(map[y2][x2]=='.' && room_number[y2][x2]!=number_of_rooms){
+            map[y2][x2]='<';
+            stairs++;
+        }
+    }
+    int y=y2;
+    int x=x2;
+
+    int room_num=room_number[y][x];
+
+    for(int i=0;i<max_x;i++){
+        for(int j=0;j<max_y;j++){
+            if(room_number[j][i]==room_num){
+                visited[j][i]=1;
+            }
+        }
+    }
+
+    stairs = 0;
+    while(!stairs) {
+        y2 = rand() % max_y  + 1;
+        x2 = rand() % max_x  + 1;
+        if(map[y2][x2]=='.' && room_number[y2][x2]==number_of_rooms){
+            map[y2][x2]='<';
+            stairs++;
+        }
+    }
+
+    clear();
+
+    init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
+    init_pair(6, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(7, COLOR_BLACK, COLOR_WHITE);
+    init_pair(8, COLOR_YELLOW, COLOR_RED);
+    ////////////////////
+    int total_yellow_gold=0;
+    int total_black_gold=0;
+    /////////////////////
+
+    int food=current_user->food;
+    int food1=current_user->food1;
+    int health=current_user->health;
+
+
+    ///////////////////////MAIN///////
+
+    // printing map (player movement -- map)
+    int c;
+    int counter=0;
+    do {
+        //print map
+        for(int i = 0; i < max_y; i++) {
+            for(int j = 0; j < max_x; j++) {
+                if(map[i][j] != ' ' && visited[i][j]==1 && room_number[i][j]!=number_of_rooms) {
+                    if(map[i][j]=='|'){
+                        attron(COLOR_PAIR(5));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(5));
+                    }
+                    else if(map[i][j]=='O'){
+                        attron(COLOR_PAIR(5));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(5));
+                    }
+                    else if(map[i][j]=='$'){
+                        attron(COLOR_PAIR(6));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(6));
+                    }
+                    else if(map[i][j]=='@'){
+                        attron(COLOR_PAIR(7));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(7));
+                    }
+                    else if(map[i][j]=='F'){
+                        attron(COLOR_PAIR(8));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(8));
+                    }
+                    else if(map[i][j]=='T'){
+                        mvaddch(i, j, '.');
+                    }
+                    else if(map[i][j]=='^'){
+                        mvaddch(i, j, map[i][j]);
+                    }
+                    else {
+                        mvaddch(i, j, map[i][j]);
+                    }
+
+                }
+                else if(map[i][j] != ' ' && visited[i][j]==1 && room_number[i][j]==number_of_rooms) {
+                    if(map[i][j]=='X'){
+                        attron(COLOR_PAIR(5));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(5));
+                    }
+                    else if(map[i][j]=='O'){
+                        attron(COLOR_PAIR(5));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(5));
+                    }
+                    else if(map[i][j]=='$'){
+                        attron(COLOR_PAIR(6));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(6));
+                    }
+                    else if(map[i][j]=='@'){
+                        attron(COLOR_PAIR(7));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(7));
+                    }
+                    else if(map[i][j]=='F'){
+                        attron(COLOR_PAIR(8));
+                        mvaddch(i, j, map[i][j]);
+                        attroff(COLOR_PAIR(8));
+                    }
+                    else if(map[i][j]=='T'){
+                        mvaddch(i, j, '.');
+                    }
+                    else if(map[i][j]=='^'){
+                        mvaddch(i, j, map[i][j]);
+                    }
+                    else {
+                        mvaddch(i, j, map[i][j]);
+                    }
+
+                }
+            }
+        }
+
+        int new_y = y;
+        int new_x = x;
+
+        if(c ==101) { ///food window
+            clear();
+            int p= food_bar(&food1, &health, &food);
+            if(p==3){
+                continue;
+            }
+            c = getch();
+        }
+        if (c == KEY_UP && y > 0) new_y--;
+        if (c == KEY_DOWN && y < max_y - 1) new_y++;
+        if (c == KEY_RIGHT && x < max_x - 1) new_x++;
+        if (c == KEY_LEFT && x > 0) new_x--;
+
+        if(map[new_y][new_x] == '.' || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '+' ||
+           map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^') {
+            if(map[new_y][new_x] == '$'){
+                int temp = 2 + (rand() % 3 );
+                mvprintw(2,3,"You received %d GOLDS !",temp);
+                total_yellow_gold+= temp;
+            }
+            if(map[new_y][new_x] == '@'){
+                int temp = 6 + (rand() % 4 );
+                mvprintw(2,3,"You received %d GOLDS !",temp);
+                total_black_gold+= temp;
+            }
+            if(map[new_y][new_x] == 'F'){
+                int temp = 1;
+                mvprintw(2,3,"You received %d FOOD !",temp);
+                food1+= 1;
+                if(food1>5){
+                    food1=5;
+                }
+            }
+
+            if(map[new_y][new_x] == 'T'){
+                int temp = 1;
+                mvprintw(2,3,"You stepped on a TRAP !",temp);
+                health=health-2;
+                refresh();
+                map[new_y][new_x]='^';
+            }
+
+
+            y = new_y;
+            x = new_x;
+        }
+
+        if(map[y][x]!='+' && map[y][x]!='#'&&map[y][x]!='^'){
+            map[y][x]='.';
+        }
+        mvprintw(max_y-2,max_x-10,"GOLD: %d",current_user->new_golds+total_black_gold+total_yellow_gold);
+        draw_character(y, x, current_user->game_setting.player_color);
+
+        if(counter==20){
+            health--;
+            counter=0;
+        }
+        if(counter==15){
+            food--;
+        }
+        if(health==0){
+            current_user->new_golds+=total_black_gold+total_yellow_gold;
+            current_user->total_gold+=current_user->new_golds;
+            return 0;
+        }
+
+        //health
+        mvprintw(max_y-2,2,"health: ");
+        refresh();
+        for(int i =0;i<=health;i++){
+            mvprintw(max_y-2,10+i,"♥");
+            mvprintw(max_y-2,10+health," ");
+            for(int j=0;j<10-i;j++){
+                mvprintw(max_y-2,10+health+j," ");
+            }
+        }
+
+        //food
+        mvprintw(max_y-2,24,"food: ");
+
+        for(int i =0;i<=food;i++){
+            mvprintw(max_y-2,30+i,"+");
+            mvprintw(max_y-2,30+food," ");
+        }
+
+        counter++;
+
+
+        refresh();
+        if( map[new_y][new_x]=='#'){
+            int temp = cori_number[new_y][new_x];
+            for(int j=-4;j<4;j++){
+                for(int i=-4;i<4;i++){
+                    if(cori_number[new_y+j][new_x+i]==temp && map[new_y+j][new_x+i]=='#' && visited[new_y+j][new_x+i]!=1 || map[new_y+j][new_x+i]=='+'){
+                        visited[new_y+j][new_x+i]=1;
+                    }
+                }
+            }
+        }
+
+        else if(map[new_y][new_x]=='+' ){
+            int tempp=room_number[new_y][new_x];
+            for(int j1=0;j1<max_y;j1++){
+                for (int i1 = 0; i1 < max_x; i1++) {
+                    if(visited[j1][i1]!=1 && room_number[j1][i1]==tempp){
+                        visited[j1][i1]=1;
+                    }
+                }
+            }
+        }
+
+        if(map[new_y][new_x]=='<'){
+            current_user->food=food;
+            current_user->health=health;
+            current_user->food1=food1;
+            current_user->new_golds+=total_black_gold+total_yellow_gold;
+            return 1;
+        }
+
+    } while ((c = getch()) != 27);
+
+    endwin();
+}
+
+
+int victory(struct user *current_user){
+    initscr();
+    keypad(stdscr, TRUE);
+    curs_set(0);
+    refresh();
+    noecho();
+    cbreak();
+    clear();
+    start_color();
+    curs_set(1);
+    init_pair(1, COLOR_WHITE, COLOR_BLACK);
+    int max_y, max_x;
+    getmaxyx(stdscr, max_y, max_x);
+    int center_y = max_y / 2 - 7;
+    int center_x = max_x / 2 - 15;
+    int selected =0;
+    int key;
+    while(1) {
+        clear();
+        attron(COLOR_PAIR(1) | A_BOLD);
+        mvprintw(center_y - 2, center_x-4, "══════════════════════════════");
+        attron(COLOR_PAIR(1) | A_BOLD | A_BLINK);
+        mvprintw(center_y, center_x+4, " Y O U  WIN! ");
+        attroff(COLOR_PAIR(1) | A_BOLD | A_BLINK);
+        mvprintw(center_y + 2, center_x-4, "══════════════════════════════");
+        attroff(COLOR_PAIR(1) | A_BOLD);
+        mvprintw(center_y + 6, center_x-4, "Total received Golds: %d",current_user->total_gold+current_user->new_golds);
+        mvprintw(center_y+20,center_x , selected == 0 ? "[ back to leaderboard ]" : "back to leaderboard");
+        refresh();
+        key = getch();
+        current_user->total_finished_games+=1;
+        current_user->total_gold= current_user->total_gold+current_user->new_golds;
+
+        switch(key) {
+            case KEY_UP:
+                selected--;
+                if(selected < 0) {
+                    selected = 0;
+                }
+                break;
+            case KEY_DOWN:
+                selected++;
+                if(selected > 0) {
+                    selected = 0;
+                }
+                break;
+            case '\n':
+                clear();
+                if(selected == 0) {
+                    return 1;
+                }
+                refresh();
+                getch();
+                break;
+        }
+    }
+    refresh();
 }
 
 int lose(){
