@@ -5,6 +5,7 @@
 #include <string.h>
 #include <wchar.h>
 #include <time.h>
+#include <math.h>
 
 
 void draw_black_gold(int y, int x) {
@@ -78,6 +79,7 @@ int old_user(char *username);
 int game_menu(char *username);
 int leaderboard(struct user *current_user );
 int gamesetting(struct user *current_user);
+int code(char password[]);
 int easy_game(struct user *current_user);
 int easy_game_f2(struct user *current_user);
 int easy_game_f3(struct user *current_user);
@@ -958,6 +960,49 @@ int weapon(struct user *current_user) {
     return 0;
 }
 
+int code(char password[]){
+    initscr();
+    keypad(stdscr, TRUE);
+    refresh();
+    noecho();
+    cbreak();
+    clear();
+    start_color();
+    curs_set(1);
+    init_pair(1, COLOR_WHITE, COLOR_BLACK);
+    int max_y, max_x;
+    getmaxyx(stdscr, max_y, max_x);
+    int center_y = max_y / 2 - 7;
+    int center_x = max_x / 2 - 15;
+    char pass[100];
+    mvprintw(center_y+2,center_x+12,"E N T E R  T H E  P A S S W O R D");
+    move(center_y + 4, center_x + 12);
+    getstr(pass);
+    int check=0;
+    if(strcmp(pass,password)==0){
+        mvprintw(center_y+10,center_x+12,"Password is correct!");
+        check++;
+
+    }
+    else {
+        mvprintw(center_y+10,center_x+12,"Password is wrong!");
+    }
+
+    mvprintw(center_y+12,center_x+12,"press any key to back");
+    getch();
+    if(check==0){
+        clear();
+        return 0;
+    }
+    else{
+        clear();
+        return 1;
+    }
+
+
+
+}
+
 
 int easy_game(struct user *current_user) {
     setlocale(LC_ALL, "");
@@ -1331,6 +1376,52 @@ int easy_game(struct user *current_user) {
         }
     }
 
+    /////locked door////////////////
+    int locked[max_y][max_x];
+    for(int j=0;j<max_y;j++){
+        for(int i=0;i<max_x;i++){
+            locked[j][i]=0;
+        }
+    }
+    int lock=0;
+    int locked_room_num;
+    int cordinate_locked[2];
+    while(!lock){
+        int y4=rand()%max_y;
+        int x4=rand()%max_x;
+        if(map[y4][x4]=='+' && map[y4+1][x4]!='+' && map[y4-1][x4]!='+' && map[y4][x4+1]!='+' && map[y4][x4-1]!='+'){
+            int count=0;
+            locked_room_num=room_number[y4][x4];
+            for(int j=0;j<max_y;j++){
+                for(int i=0; i<max_x;i++){
+                    if(map[j][i]=='+' && room_number[j][i]==locked_room_num){
+                        count++;
+                    }
+                }
+            }
+            if(count==2){
+                locked[y4][x4]=1;
+                cordinate_locked[0]=y4; cordinate_locked[1]=x4;
+                break;
+            }
+        }
+    }
+
+
+
+    while(1){
+        int y5=rand()%max_y;
+        int x5=rand()%max_x;
+        if(map[y5][x5]=='.' && room_number[y5][x5]==locked_room_num){
+            map[y5][x5]='=';
+            break;
+        }
+    }
+
+
+
+    ////////////////
+
     clear();
 
     init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
@@ -1338,6 +1429,8 @@ int easy_game(struct user *current_user) {
     init_pair(7, COLOR_BLACK, COLOR_WHITE);
     init_pair(8, COLOR_YELLOW, COLOR_RED);
     init_pair(9, COLOR_CYAN, COLOR_BLACK);
+    init_pair(10,COLOR_RED,COLOR_BLACK);
+    init_pair(11,COLOR_GREEN,COLOR_BLACK);
     ////////////////////
     int total_yellow_gold=0;
     int total_black_gold=0;
@@ -1353,6 +1446,10 @@ int easy_game(struct user *current_user) {
     // printing map (player movement -- map)
     int c;
     int counter=0;
+
+    char password[100]={0};
+    int password_counter=0;
+
     do {
         //print map
         for(int i = 0; i < max_y; i++) {
@@ -1413,6 +1510,19 @@ int easy_game(struct user *current_user) {
                         attroff(COLOR_PAIR(9));
                      //mvprintw(i, j, "%lc", (wint_t)0x2694); // ⚔
                         }
+                    else if(map[i][j]=='+' && locked[i][j]==1){
+                        attron(COLOR_PAIR(10));
+                        mvaddch(i, j, '@');
+                        attroff(COLOR_PAIR(10));
+                    }
+                    else if(map[i][j]=='+' && locked[i][j]==2){
+                        attron(COLOR_PAIR(11));
+                        mvaddch(i, j, '@');
+                        attroff(COLOR_PAIR(11));
+                    }
+                    else if(map[i][j]=='='){
+                        mvprintw(i, j, "%lc", (wint_t)0x23F9);
+                    }
                     else {
                         mvaddch(i, j, map[i][j]);
 
@@ -1445,10 +1555,20 @@ int easy_game(struct user *current_user) {
         if (c == KEY_RIGHT && x < max_x - 1) new_x++;
         if (c == KEY_LEFT && x > 0) new_x--;
 
-        if(map[new_y][new_x] == '.' || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '+' ||
+        if( (map[new_y][new_x] == '+' && (locked[new_y][new_x]==0 || locked[new_y][new_x]==2)) || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '.' ||
            map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
            map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
-           map[new_y][new_x] == '5') {
+           map[new_y][new_x] == '5' || map[new_y][new_x]=='=') {
+
+            if(map[new_y][new_x]=='='){
+                char arrpass[]="0123456789";
+                for(int i9=0;i9<4;i9++){
+                    int temp=rand() % 9;
+                    password[i9]=arrpass[temp];
+                }
+                mvprintw(4,3,"Password is %s                                          ",password);
+
+            }
 
             if(map[new_y][new_x] == '$'){
                 int temp = 2 + (rand() % 3 );
@@ -1504,7 +1624,7 @@ int easy_game(struct user *current_user) {
             x = new_x;
         }
 
-        if(map[y][x]!='+' && map[y][x]!='#'&&map[y][x]!='^'){
+        if(map[y][x]!='+' && map[y][x]!='#'&&map[y][x]!='^' && map[y][x]!='='){
             map[y][x]='.';
         }
         mvprintw(max_y-2,max_x-10,"GOLD: %d",total_black_gold+total_yellow_gold);
@@ -1522,6 +1642,35 @@ int easy_game(struct user *current_user) {
             current_user->total_gold+=current_user->new_golds;
             return 0;
         }
+
+        //door code
+        int status=2;
+
+        if(password_counter<5 && locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+          new_y-1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+          new_y==cordinate_locked[0] && new_x+1==cordinate_locked[1] ||
+          new_y==cordinate_locked[0] && new_x-1==cordinate_locked[1] )){
+
+            mvprintw(5,3,"The door is locked. Press L to enter the pass !");
+            if(c=='l'){
+                status=code(password);
+            }
+            if(status==1){
+                locked[cordinate_locked[0]][cordinate_locked[1]]=2;
+                mvprintw(5,3,"The door is unlocked !                         ");
+                mvprintw(4,3,"                                                            ");
+
+            }
+            else if(status==0){
+                mvprintw(5,3,"Wrong password!                                ");
+                password_counter++;
+            }
+
+        }
+        if(counter==40){
+            strcpy(password,"0");
+        }
+
 
         //health
         mvprintw(max_y-2,2,"health: ");
@@ -1971,12 +2120,61 @@ int easy_game_f2(struct user *current_user) {
         }
     }
 
+    /////locked door////////////////
+    int locked[max_y][max_x];
+    for(int j=0;j<max_y;j++){
+        for(int i=0;i<max_x;i++){
+            locked[j][i]=0;
+        }
+    }
+    int lock=0;
+    int locked_room_num;
+    int cordinate_locked[2];
+    while(!lock){
+        int y4=rand()%max_y;
+        int x4=rand()%max_x;
+        if(map[y4][x4]=='+' && map[y4+1][x4]!='+' && map[y4-1][x4]!='+' && map[y4][x4+1]!='+' && map[y4][x4-1]!='+'){
+            int count=0;
+            locked_room_num=room_number[y4][x4];
+            for(int j=0;j<max_y;j++){
+                for(int i=0; i<max_x;i++){
+                    if(map[j][i]=='+' && room_number[j][i]==locked_room_num){
+                        count++;
+                    }
+                }
+            }
+            if(count==2){
+                locked[y4][x4]=1;
+                cordinate_locked[0]=y4; cordinate_locked[1]=x4;
+                break;
+            }
+        }
+    }
+
+
+
+    while(1){
+        int y5=rand()%max_y;
+        int x5=rand()%max_x;
+        if(map[y5][x5]=='.' && room_number[y5][x5]==locked_room_num){
+            map[y5][x5]='=';
+            break;
+        }
+    }
+
+
+
+    ////////////////
+
     clear();
 
     init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
     init_pair(6, COLOR_YELLOW, COLOR_BLACK);
     init_pair(7, COLOR_BLACK, COLOR_WHITE);
     init_pair(8, COLOR_YELLOW, COLOR_RED);
+    init_pair(9, COLOR_CYAN, COLOR_BLACK);
+    init_pair(10,COLOR_RED,COLOR_BLACK);
+    init_pair(11,COLOR_GREEN,COLOR_BLACK);
     ////////////////////
     int total_yellow_gold=0;
     int total_black_gold=0;
@@ -1992,6 +2190,11 @@ int easy_game_f2(struct user *current_user) {
     // printing map (player movement -- map)
     int c;
     int counter=0;
+
+    char password[100]={0};
+    int password_counter=0;
+
+
     do {
         //print map
         for(int i = 0; i < max_y; i++) {
@@ -2052,6 +2255,19 @@ int easy_game_f2(struct user *current_user) {
                         attroff(COLOR_PAIR(9));
                         //mvprintw(i, j, "%lc", (wint_t)0x2694); // ⚔
                     }
+                    else if(map[i][j]=='+' && locked[i][j]==1){
+                        attron(COLOR_PAIR(10));
+                        mvaddch(i, j, '@');
+                        attroff(COLOR_PAIR(10));
+                    }
+                    else if(map[i][j]=='+' && locked[i][j]==2){
+                        attron(COLOR_PAIR(11));
+                        mvaddch(i, j, '@');
+                        attroff(COLOR_PAIR(11));
+                    }
+                    else if(map[i][j]=='='){
+                        mvprintw(i, j, "%lc", (wint_t)0x23F9);
+                    }
                     else {
                         mvaddch(i, j, map[i][j]);
 
@@ -2083,10 +2299,20 @@ int easy_game_f2(struct user *current_user) {
         if (c == KEY_RIGHT && x < max_x - 1) new_x++;
         if (c == KEY_LEFT && x > 0) new_x--;
 
-        if(map[new_y][new_x] == '.' || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '+' ||
-           map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
-           map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
-           map[new_y][new_x] == '5') {
+        if( (map[new_y][new_x] == '+' && (locked[new_y][new_x]==0 || locked[new_y][new_x]==2)) || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '.' ||
+            map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
+            map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
+            map[new_y][new_x] == '5' || map[new_y][new_x]=='=') {
+
+            if(map[new_y][new_x]=='='){
+                char arrpass[]="0123456789";
+                for(int i9=0;i9<4;i9++){
+                    int temp=rand() % 9;
+                    password[i9]=arrpass[temp];
+                }
+                mvprintw(4,3,"Password is %s                                          ",password);
+
+            }
 
             if(map[new_y][new_x] == '$'){
                 int temp = 2 + (rand() % 3 );
@@ -2142,9 +2368,10 @@ int easy_game_f2(struct user *current_user) {
             x = new_x;
         }
 
-        if(map[y][x]!='+' && map[y][x]!='#'&&map[y][x]!='^'){
+        if(map[y][x]!='+' && map[y][x]!='#'&&map[y][x]!='^' && map[y][x]!='='){
             map[y][x]='.';
         }
+
         mvprintw(max_y-2,max_x-10,"GOLD: %d",current_user->new_golds+total_black_gold+total_yellow_gold);
         draw_character(y, x, current_user->game_setting.player_color);
 
@@ -2160,6 +2387,36 @@ int easy_game_f2(struct user *current_user) {
             current_user->total_gold+=current_user->new_golds;
             return 0;
         }
+
+        //door code
+        int status=2;
+
+        if(password_counter<5 && locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+                                                                                         new_y-1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+                                                                                         new_y==cordinate_locked[0] && new_x+1==cordinate_locked[1] ||
+                                                                                         new_y==cordinate_locked[0] && new_x-1==cordinate_locked[1] )){
+
+            mvprintw(5,3,"The door is locked. Press L to enter the pass !");
+            if(c=='l'){
+                status=code(password);
+            }
+            if(status==1){
+                locked[cordinate_locked[0]][cordinate_locked[1]]=2;
+                mvprintw(5,3,"The door is unlocked !                         ");
+                mvprintw(4,3,"                                                            ");
+
+            }
+            else if(status==0){
+                mvprintw(5,3,"Wrong password!                                ");
+                password_counter++;
+            }
+
+        }
+        if(counter==40){
+            strcpy(password,"0");
+        }
+
+
 
         //health
         mvprintw(max_y-2,2,"health: ");
@@ -2600,6 +2857,52 @@ int easy_game_f3(struct user *current_user) {
         }
     }
 
+    /////locked door////////////////
+    int locked[max_y][max_x];
+    for(int j=0;j<max_y;j++){
+        for(int i=0;i<max_x;i++){
+            locked[j][i]=0;
+        }
+    }
+    int lock=0;
+    int locked_room_num;
+    int cordinate_locked[2];
+    while(!lock){
+        int y4=rand()%max_y;
+        int x4=rand()%max_x;
+        if(map[y4][x4]=='+' && map[y4+1][x4]!='+' && map[y4-1][x4]!='+' && map[y4][x4+1]!='+' && map[y4][x4-1]!='+'){
+            int count=0;
+            locked_room_num=room_number[y4][x4];
+            for(int j=0;j<max_y;j++){
+                for(int i=0; i<max_x;i++){
+                    if(map[j][i]=='+' && room_number[j][i]==locked_room_num){
+                        count++;
+                    }
+                }
+            }
+            if(count==2){
+                locked[y4][x4]=1;
+                cordinate_locked[0]=y4; cordinate_locked[1]=x4;
+                break;
+            }
+        }
+    }
+
+
+
+    while(1){
+        int y5=rand()%max_y;
+        int x5=rand()%max_x;
+        if(map[y5][x5]=='.' && room_number[y5][x5]==locked_room_num){
+            map[y5][x5]='=';
+            break;
+        }
+    }
+
+
+
+    ////////////////
+
 
 
 
@@ -2610,6 +2913,9 @@ int easy_game_f3(struct user *current_user) {
     init_pair(6, COLOR_YELLOW, COLOR_BLACK);
     init_pair(7, COLOR_BLACK, COLOR_WHITE);
     init_pair(8, COLOR_YELLOW, COLOR_RED);
+    init_pair(9, COLOR_CYAN, COLOR_BLACK);
+    init_pair(10,COLOR_RED,COLOR_BLACK);
+    init_pair(11,COLOR_GREEN,COLOR_BLACK);
     ////////////////////
     int total_yellow_gold=0;
     int total_black_gold=0;
@@ -2625,6 +2931,10 @@ int easy_game_f3(struct user *current_user) {
     // printing map (player movement -- map)
     int c;
     int counter=0;
+
+    char password[100]={0};
+    int password_counter=0;
+
     do {
         //print map
         for(int i = 0; i < max_y; i++) {
@@ -2685,6 +2995,19 @@ int easy_game_f3(struct user *current_user) {
                         attroff(COLOR_PAIR(9));
                         //mvprintw(i, j, "%lc", (wint_t)0x2694); // ⚔
                     }
+                    else if(map[i][j]=='+' && locked[i][j]==1){
+                        attron(COLOR_PAIR(10));
+                        mvaddch(i, j, '@');
+                        attroff(COLOR_PAIR(10));
+                    }
+                    else if(map[i][j]=='+' && locked[i][j]==2){
+                        attron(COLOR_PAIR(11));
+                        mvaddch(i, j, '@');
+                        attroff(COLOR_PAIR(11));
+                    }
+                    else if(map[i][j]=='='){
+                        mvprintw(i, j, "%lc", (wint_t)0x23F9);
+                    }
                     else {
                         mvaddch(i, j, map[i][j]);
 
@@ -2716,10 +3039,20 @@ int easy_game_f3(struct user *current_user) {
         if (c == KEY_RIGHT && x < max_x - 1) new_x++;
         if (c == KEY_LEFT && x > 0) new_x--;
 
-        if(map[new_y][new_x] == '.' || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '+' ||
-           map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
-           map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
-           map[new_y][new_x] == '5') {
+        if( (map[new_y][new_x] == '+' && (locked[new_y][new_x]==0 || locked[new_y][new_x]==2)) || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '.' ||
+            map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
+            map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
+            map[new_y][new_x] == '5' || map[new_y][new_x]=='=') {
+
+            if(map[new_y][new_x]=='='){
+                char arrpass[]="0123456789";
+                for(int i9=0;i9<4;i9++){
+                    int temp=rand() % 9;
+                    password[i9]=arrpass[temp];
+                }
+                mvprintw(4,3,"Password is %s                                          ",password);
+
+            }
 
             if(map[new_y][new_x] == '$'){
                 int temp = 2 + (rand() % 3 );
@@ -2775,9 +3108,10 @@ int easy_game_f3(struct user *current_user) {
             x = new_x;
         }
 
-        if(map[y][x]!='+' && map[y][x]!='#'&&map[y][x]!='^'){
+        if(map[y][x]!='+' && map[y][x]!='#'&&map[y][x]!='^' && map[y][x]!='='){
             map[y][x]='.';
         }
+
         mvprintw(max_y-2,max_x-10,"GOLD: %d",current_user->new_golds+total_black_gold+total_yellow_gold);
         draw_character(y, x, current_user->game_setting.player_color);
 
@@ -2793,6 +3127,36 @@ int easy_game_f3(struct user *current_user) {
             current_user->total_gold+=current_user->new_golds;
             return 0;
         }
+
+        //door code
+        int status=2;
+
+        if(password_counter<5 && locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+                                                                                         new_y-1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+                                                                                         new_y==cordinate_locked[0] && new_x+1==cordinate_locked[1] ||
+                                                                                         new_y==cordinate_locked[0] && new_x-1==cordinate_locked[1] )){
+
+            mvprintw(5,3,"The door is locked. Press L to enter the pass !");
+            if(c=='l'){
+                status=code(password);
+            }
+            if(status==1){
+                locked[cordinate_locked[0]][cordinate_locked[1]]=2;
+                mvprintw(5,3,"The door is unlocked !                         ");
+                mvprintw(4,3,"                                                            ");
+
+            }
+            else if(status==0){
+                mvprintw(5,3,"Wrong password!                                ");
+                password_counter++;
+            }
+
+        }
+        if(counter==40){
+            strcpy(password,"0");
+        }
+
+
 
         //health
         mvprintw(max_y-2,2,"health: ");
@@ -3291,12 +3655,62 @@ int easy_game_f4(struct user *current_user) {
         }
     }
 
+
+    /////locked door////////////////
+    int locked[max_y][max_x];
+    for(int j=0;j<max_y;j++){
+        for(int i=0;i<max_x;i++){
+            locked[j][i]=0;
+        }
+    }
+    int lock=0;
+    int locked_room_num;
+    int cordinate_locked[2];
+    while(!lock){
+        int y4=rand()%max_y;
+        int x4=rand()%max_x;
+        if(map[y4][x4]=='+' && map[y4+1][x4]!='+' && map[y4-1][x4]!='+' && map[y4][x4+1]!='+' && map[y4][x4-1]!='+'){
+            int count=0;
+            locked_room_num=room_number[y4][x4];
+            for(int j=0;j<max_y;j++){
+                for(int i=0; i<max_x;i++){
+                    if(map[j][i]=='+' && room_number[j][i]==locked_room_num){
+                        count++;
+                    }
+                }
+            }
+            if(count==2){
+                locked[y4][x4]=1;
+                cordinate_locked[0]=y4; cordinate_locked[1]=x4;
+                break;
+            }
+        }
+    }
+
+
+
+    while(1){
+        int y5=rand()%max_y;
+        int x5=rand()%max_x;
+        if(map[y5][x5]=='.' && room_number[y5][x5]==locked_room_num){
+            map[y5][x5]='=';
+            break;
+        }
+    }
+
+
+
+    ////////////////
+
     clear();
 
     init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
     init_pair(6, COLOR_YELLOW, COLOR_BLACK);
     init_pair(7, COLOR_BLACK, COLOR_WHITE);
     init_pair(8, COLOR_YELLOW, COLOR_RED);
+    init_pair(9, COLOR_CYAN, COLOR_BLACK);
+    init_pair(10,COLOR_RED,COLOR_BLACK);
+    init_pair(11,COLOR_GREEN,COLOR_BLACK);
     ////////////////////
     int total_yellow_gold=0;
     int total_black_gold=0;
@@ -3312,11 +3726,15 @@ int easy_game_f4(struct user *current_user) {
     // printing map (player movement -- map)
     int c;
     int counter=0;
+
+    char password[100]={0};
+    int password_counter=0;
+
     do {
         //print map
         for(int i = 0; i < max_y; i++) {
             for(int j = 0; j < max_x; j++) {
-                if(map[i][j] != ' ' && visited[i][j]==1 && room_number[i][j]!=number_of_rooms) {
+                if(map[i][j] != ' ' && visited[i][j]==1) {
                     if(map[i][j]=='|'){
                         attron(COLOR_PAIR(5));
                         mvaddch(i, j, map[i][j]);
@@ -3372,46 +3790,22 @@ int easy_game_f4(struct user *current_user) {
                         attroff(COLOR_PAIR(9));
                         //mvprintw(i, j, "%lc", (wint_t)0x2694); // ⚔
                     }
-                    else {
-                        mvaddch(i, j, map[i][j]);
-
+                    else if(map[i][j]=='+' && locked[i][j]==1){
+                        attron(COLOR_PAIR(10));
+                        mvaddch(i, j, '@');
+                        attroff(COLOR_PAIR(10));
                     }
-
-                }
-                else if(map[i][j] != ' ' && visited[i][j]==1 && room_number[i][j]==number_of_rooms) {
-                    if(map[i][j]=='X'){
-                        attron(COLOR_PAIR(5));
-                        mvaddch(i, j, map[i][j]);
-                        attroff(COLOR_PAIR(5));
+                    else if(map[i][j]=='+' && locked[i][j]==2){
+                        attron(COLOR_PAIR(11));
+                        mvaddch(i, j, '@');
+                        attroff(COLOR_PAIR(11));
                     }
-                    else if(map[i][j]=='O'){
-                        attron(COLOR_PAIR(5));
-                        mvaddch(i, j, map[i][j]);
-                        attroff(COLOR_PAIR(5));
-                    }
-                    else if(map[i][j]=='$'){
-                        attron(COLOR_PAIR(6));
-                        mvaddch(i, j, map[i][j]);
-                        attroff(COLOR_PAIR(6));
-                    }
-                    else if(map[i][j]=='@'){
-                        attron(COLOR_PAIR(7));
-                        mvaddch(i, j, map[i][j]);
-                        attroff(COLOR_PAIR(7));
-                    }
-                    else if(map[i][j]=='F'){
-                        attron(COLOR_PAIR(8));
-                        mvaddch(i, j, map[i][j]);
-                        attroff(COLOR_PAIR(8));
-                    }
-                    else if(map[i][j]=='T'){
-                        mvaddch(i, j, '.');
-                    }
-                    else if(map[i][j]=='^'){
-                        mvaddch(i, j, map[i][j]);
+                    else if(map[i][j]=='='){
+                        mvprintw(i, j, "%lc", (wint_t)0x23F9);
                     }
                     else {
                         mvaddch(i, j, map[i][j]);
+
                     }
 
                 }
@@ -3440,10 +3834,20 @@ int easy_game_f4(struct user *current_user) {
         if (c == KEY_RIGHT && x < max_x - 1) new_x++;
         if (c == KEY_LEFT && x > 0) new_x--;
 
-        if(map[new_y][new_x] == '.' || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '+' ||
-           map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
-           map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
-           map[new_y][new_x] == '5') {
+        if( (map[new_y][new_x] == '+' && (locked[new_y][new_x]==0 || locked[new_y][new_x]==2)) || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '.' ||
+            map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
+            map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
+            map[new_y][new_x] == '5' || map[new_y][new_x]=='=') {
+
+            if(map[new_y][new_x]=='='){
+                char arrpass[]="0123456789";
+                for(int i9=0;i9<4;i9++){
+                    int temp=rand() % 9;
+                    password[i9]=arrpass[temp];
+                }
+                mvprintw(4,3,"Password is %s                                          ",password);
+
+            }
 
             if(map[new_y][new_x] == '$'){
                 int temp = 2 + (rand() % 3 );
@@ -3499,9 +3903,10 @@ int easy_game_f4(struct user *current_user) {
             x = new_x;
         }
 
-        if(map[y][x]!='+' && map[y][x]!='#'&&map[y][x]!='^'){
+        if(map[y][x]!='+' && map[y][x]!='#'&&map[y][x]!='^' && map[y][x]!='='){
             map[y][x]='.';
         }
+
         mvprintw(max_y-2,max_x-10,"GOLD: %d",current_user->new_golds+total_black_gold+total_yellow_gold);
         draw_character(y, x, current_user->game_setting.player_color);
 
@@ -3517,6 +3922,35 @@ int easy_game_f4(struct user *current_user) {
             current_user->total_gold+=current_user->new_golds;
             return 0;
         }
+
+        //door code
+        int status=2;
+
+        if(password_counter<5 && locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+                                                                                         new_y-1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+                                                                                         new_y==cordinate_locked[0] && new_x+1==cordinate_locked[1] ||
+                                                                                         new_y==cordinate_locked[0] && new_x-1==cordinate_locked[1] )){
+
+            mvprintw(5,3,"The door is locked. Press L to enter the pass !");
+            if(c=='l'){
+                status=code(password);
+            }
+            if(status==1){
+                locked[cordinate_locked[0]][cordinate_locked[1]]=2;
+                mvprintw(5,3,"The door is unlocked !                         ");
+                mvprintw(4,3,"                                                            ");
+
+            }
+            else if(status==0){
+                mvprintw(5,3,"Wrong password!                                ");
+                password_counter++;
+            }
+
+        }
+        if(counter==40){
+            strcpy(password,"0");
+        }
+
 
         //health
         mvprintw(max_y-2,2,"health: ");
