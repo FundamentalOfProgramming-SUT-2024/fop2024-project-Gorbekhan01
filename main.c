@@ -38,6 +38,15 @@ void draw_character(int y, int x, int color) {
 
 }
 
+typedef struct weapons{
+    int Mace;
+    int Dagger;
+    int Magic_Wand;
+    int Normal_Arrow;
+    int Sword;
+    int in_use_weapon;
+}weapons;
+
 typedef struct game{
    char username[100];
    int music;
@@ -50,13 +59,14 @@ typedef struct user{
     int total_score;
     int total_gold;
     int total_finished_games;
-    char total_time[100];
+    char joined_date[100];
     struct game game_setting;
     int rank;
     int food;
     int health;
     int food1;
     int new_golds;
+    struct weapons weapons;
 }user;
 
 
@@ -66,13 +76,14 @@ int choosing_user(char *username);
 int new_user(char *username);
 int old_user(char *username);
 int game_menu(char *username);
-int leaderboard(struct user *current_user ,int status);
+int leaderboard(struct user *current_user );
 int gamesetting(struct user *current_user);
 int easy_game(struct user *current_user);
 int easy_game_f2(struct user *current_user);
 int easy_game_f3(struct user *current_user);
 int easy_game_f4(struct user *current_user);
 int food_bar(int* food1, int* health , int* food);
+int weapon(struct user *current_user);
 int lose();
 int victory(struct user *current_user);
 
@@ -93,7 +104,7 @@ int main() {
     int repeat=0;
     while(repeat==0) {
         if (choice == 0) {
-            leaderboard(&current_user,0);
+            leaderboard(&current_user);
             int level = gamesetting(&current_user);
             if (current_user.game_setting.game_level == 0) {
                 int result_game = easy_game(&current_user);
@@ -109,7 +120,7 @@ int main() {
                 }
                 else if(result_game==1){
                     victory(&current_user);
-                    leaderboard(&current_user,1);
+                    leaderboard(&current_user);
                 }
             }
         }
@@ -367,14 +378,16 @@ int new_user(char *username) {
                 break;
             }
         }
+        move(center_y + 12, center_x + 9);
+        clrtoeol();
         refresh();
 
         if (temp == 0) {
             break;
         }
     }
-    mvprintw(center_y + 12, center_x + 9, ". . .                       ");
-    mvprintw(center_y + 13, center_x + 9, "❗Enter < random > in password section to get random passwords !!");
+    mvprintw(center_y + 12, center_x + 9, ". . .                                                                                        ");
+    mvprintw(center_y + 14, center_x + 9, "** Enter < random > in password section to get random passwords !!");
     fclose(fptr);
 
     char password[50];
@@ -385,26 +398,26 @@ int new_user(char *username) {
         getstr(password);
         len = strlen(password);
         if (len < 7 & strcmp("random", password) != 0) {
-            mvprintw(center_y + 12, center_x + 9, "Password must be at least 7 letters!");
+            mvprintw(center_y + 12, center_x + 9, "Password must be at least 7 letters!              ");
             move(center_y + 6, center_x + 12);
             clrtoeol();
             refresh();
         } else if (strcmp("random", password) == 0) {
             move(center_y + 6, center_x + 12);
             clrtoeol();
-            int random_num = 7 + (rand() % 30);
+            int random_num = 7 + (rand() % 14);
             char chars[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789*&@#$%";
             int lenii = strlen(chars);
-            char temp_pass[1000];
+            char temp_pass[100];
             for (int i = 0; i < random_num; i++) {
                 int temp = rand() % lenii;
                 temp_pass[i] = chars[temp];
             }
-            mvprintw(center_y + 12, center_x + 9, "your random password is <  %s  > ", temp_pass);
+            mvprintw(center_y + 14, center_x + 9, "your random password is <  %s  >                                                              ", temp_pass);
         }
     }
-    mvprintw(center_y + 12, center_x + 9, ". . .                                     ");
-    mvprintw(center_y + 13, center_x + 9, "                                                            ");
+    mvprintw(center_y + 12, center_x + 9, ". . .                                                                                         ");
+    mvprintw(center_y + 13, center_x + 9, "                                                                                            ");
 
     char email[50];
     int t = 0;
@@ -489,8 +502,7 @@ int game_menu(char *username){
     return 0;
 }
 
-int leaderboard(struct user *current_user, int status) {
-    // Initialize ncurses
+int leaderboard(struct user *current_user) {
     initscr();
     keypad(stdscr, TRUE);
     curs_set(0);
@@ -499,197 +511,117 @@ int leaderboard(struct user *current_user, int status) {
     cbreak();
     clear();
 
-    // Calculate center positions
     int max_y, max_x;
     getmaxyx(stdscr, max_y, max_x);
-    int center_y = max_y / 2 - 10;
-    int center_x = max_x / 2 - 40;
+    int center_y = max_y / 2 -10;
+    int center_x = max_x / 2 -40;
 
-    // Draw header
+    const int COL_WIDTH = 15;
     mvprintw(center_y, center_x + 25, "=== LEADERBOARD ===");
-    mvprintw(center_y + 2, center_x, "%-10s %-15s %-15s %-15s %-15s %-15s",
-             "Rank", "Username", "Score", "Gold", "Games", "Time");
+    mvprintw(center_y + 2, center_x, "%-10s %-15s %-15s %-15s %-15s %-20s",
+             "Rank", "Username", "Score", "Gold", "Finished Games", "joined date");
     mvprintw(center_y + 3, center_x, "----------------------------------------------------------------");
 
-    // Try to open leaderboard file
     FILE* fptr = fopen("leaderboard.txt", "r");
     if (fptr == NULL) {
-        // Initialize new user with default values
-        current_user->total_finished_games = 0;
-        current_user->total_gold = 0;
-        current_user->total_score = 0;
-        current_user->rank = 0;
-        strncpy(current_user->total_time, "00:00:00", sizeof(current_user->total_time) - 1);
-        current_user->total_time[sizeof(current_user->total_time) - 1] = '\0';
+        mvprintw(center_y + 5, center_x, "No leaderboard data available!");
+        refresh();
+        getch();
+        return 0;
+    }
+    init_pair(1, COLOR_WHITE, COLOR_BLACK);
 
-        if (status == 1) {
-            // Create new leaderboard file if updating
-            fptr = fopen("leaderboard.txt", "w");
-            if (fptr == NULL) {
-                mvprintw(center_y + 5, center_x, "Error creating leaderboard file!");
-                refresh();
-                getch();
-                endwin();
-                return 0;
-            }
+    int found = 0;
+    int rank;
+    char username1[100];
+    int total_score;
+    int total_gold;
+    int total_finished_games;
+    char total_time[100];
+    char tempi[100];
+    int k =0;
+    rewind(fptr);
+    while (fgets(tempi, 100, fptr) != NULL) {
+        sscanf(tempi, "%d %s %d %d %d %s", &rank, username1, &total_score, &total_gold, &total_finished_games, total_time);
+        if (strcmp(username1, current_user->username) == 0) {
+            found = 1;
+            current_user->total_score = total_score;
+            current_user->total_gold = total_gold;
+            strcpy(current_user->joined_date, total_time);
+            current_user->total_finished_games = total_finished_games;
+            attron( A_BOLD | A_BLINK);
+            mvprintw(center_y + 4 + k, center_x, "%-10d %-15s %-15d %-15d %-15d %-20s" ,
+                     rank,
+                     current_user->username,
+                     current_user->total_score,
+                     current_user->total_gold,
+                     current_user->total_finished_games,
+                     current_user->joined_date);
+            attroff( A_BOLD | A_BLINK);
+        }
 
-            // Write current user data
+        else{
+            mvprintw(center_y + 4 + k, center_x, "%-10d %-15s %-15d %-15d %-15d %-20s" ,
+                     rank,
+                     username1,
+                     total_score,
+                     total_gold,
+                     total_finished_games,
+                     total_time);
+        }
+        k++;
+    }
+
+
+        if (!found) {
+            fclose(fptr);
+            time_t current_time;
+            struct tm* time_info;
+            char join_date[20];
+
+            time(&current_time);
+            time_info = localtime(&current_time);
+
+            strftime(join_date, sizeof(join_date), "%Y-%m-%d/%H:%M", time_info);
+
+            fptr = fopen("leaderboard.txt", "a");
+            current_user->rank=k;
+            current_user->total_score=0;
+            current_user->total_gold=0;
+            current_user->total_finished_games=0;
+            strcpy(current_user->joined_date,join_date);
             fprintf(fptr, "%d %s %d %d %d %s\n",
                     current_user->rank,
                     current_user->username,
                     current_user->total_score,
-                    current_user->new_golds,
+                    current_user->total_gold,
                     current_user->total_finished_games,
-                    current_user->total_time);
-            fclose(fptr);
+                    current_user->joined_date);
 
-            // Display current user entry
-            mvprintw(center_y + 4, center_x,
-                     "%-10d %-15s %-15d %-15d %-15d %-15s <---",
+            attron( A_BOLD | A_BLINK);
+            mvprintw(center_y + 4 + k, center_x, "%-10d %-15s %-15d %-15d %-15d %-20s",
                      current_user->rank,
                      current_user->username,
                      current_user->total_score,
-                     current_user->new_golds,
+                     current_user->total_gold,
                      current_user->total_finished_games,
-                     current_user->total_time);
-        } else {
-            mvprintw(center_y + 5, center_x, "No leaderboard data available!");
+                     current_user->joined_date);
+            attroff(A_BOLD | A_BLINK);
+
+            attron(A_BOLD | COLOR_PAIR(2));
+            mvprintw(center_y + 30, center_x, "New player added to leaderboard!");
+            attroff(A_BOLD | COLOR_PAIR(2));
         }
-
-        mvprintw(center_y + 30, center_x + 10, "[ Press enter to continue ]");
-        refresh();
-        getch();
-        endwin();
-        return 0;
-    }
-
-    // Open temporary file if updating
-    FILE* temp = NULL;
-    if (status == 1) {
-        temp = fopen("temp.txt", "w");
-        if (temp == NULL) {
-            mvprintw(center_y + 5, center_x, "Error creating temporary file!");
-            fclose(fptr);
-            refresh();
-            getch();
-            endwin();
-            return 0;
-        }
-    }
-
-    // Read and process leaderboard entries
-    int found = 0;
-    int rank;
-    char username1[50];
-    int total_score;
-    int total_gold;
-    int total_finished_games;
-    char total_time[20];
-    char tempi[256];
-    int row = 4;
-
-    while (fgets(tempi, sizeof(tempi), fptr) != NULL) {
-
-        if (sscanf(tempi, "%d %s %d %d %d %s", &rank, username1,
-                   &total_score, &total_gold, &total_finished_games, total_time) != 6) {
-            continue;
-        }
-
-        if (strcmp(username1, current_user->username) == 0) {
-            found = 1;
-
-            if (status == 1) {
-                fprintf(temp, "%d %s %d %d %d %s\n",
-                        current_user->rank,
-                        current_user->username,
-                        current_user->total_score,
-                        current_user->new_golds,
-                        current_user->total_finished_games,
-                        current_user->total_time);
-
-                mvprintw(center_y + row, center_x,
-                         "%-10d %-15s %-15d %-15d %-15d %-15s <---",
-                         current_user->rank,
-                         current_user->username,
-                         current_user->total_score,
-                         current_user->new_golds,
-                         current_user->total_finished_games,
-                         current_user->total_time);
-            } else {
-                current_user->rank = rank;
-                current_user->total_score = total_score;
-                current_user->total_gold = total_gold;
-                current_user->total_finished_games = total_finished_games;
-                strncpy(current_user->total_time, total_time, sizeof(current_user->total_time) - 1);
-                current_user->total_time[sizeof(current_user->total_time) - 1] = '\0';
-                current_user->new_golds=0;
-
-                mvprintw(center_y + row, center_x,
-                         "%-10d %-15s %-15d %-15d %-15d %-15s <---",
-                         rank, username1, total_score, total_gold,
-                         total_finished_games, total_time);
-            }
-        } else {
-            // Display other entries
-            mvprintw(center_y + row, center_x,
-                     "%-10d %-15s %-15d %-15d %-15d %-15s",
-                     rank, username1, total_score, total_gold,
-                     total_finished_games, total_time);
-
-            if (status == 1) {
-                fprintf(temp, "%s", tempi);
-            }
-        }
-        row++;
-    }
-
-    // Handle case when user is not found
-    if (!found) {
-        if (status == 1) {
-            // Add new user to leaderboard
-            fprintf(temp, "%d %s %d %d %d %s\n",
-                    current_user->rank,
-                    current_user->username,
-                    current_user->total_score,
-                    current_user->new_golds,
-                    current_user->total_finished_games,
-                    current_user->total_time);
-
-            mvprintw(center_y + row, center_x,
-                     "%-10d %-15s %-15d %-15d %-15d %-15s <---",
-                     current_user->rank,
-                     current_user->username,
-                     current_user->total_score,
-                     current_user->new_golds,
-                     current_user->total_finished_games,
-                     current_user->total_time);
-        } else {
-            // Initialize new user with default values
-            mvprintw(center_y + 20, center_x, "Player not found in leaderboard!");
-            current_user->total_finished_games = 0;
-            current_user->total_gold = 0;
-            current_user->total_score = 0;
-            current_user->rank = 0;
-            strncpy(current_user->total_time, "00:00:00", sizeof(current_user->total_time) - 1);
-            current_user->total_time[sizeof(current_user->total_time) - 1] = '\0';
-        }
-    }
 
 
     fclose(fptr);
-    if (status == 1 && temp != NULL) {
-        fclose(temp);
-        remove("leaderboard.txt");
-        rename("temp.txt", "leaderboard.txt");
-    }
-
-    mvprintw(center_y + 30, center_x + 10, "[ Press enter to continue ]");
+    mvprintw(center_y + 30, center_x+10, "[ Press enter to start the game ]");
     refresh();
     getch();
-    endwin();
     return 0;
-
 }
+
+
 int gamesetting(struct user *current_user) {
     char *choices[] = {"easy", "medium", "hard"};
     char *colors[] = {"white", "cyan", "green","SPECIAL!"};
@@ -900,6 +832,133 @@ int food_bar(int* food1,int* health,int* food){
 
 }
 
+int weapon(struct user *current_user) {
+    initscr();
+    keypad(stdscr, TRUE);
+    refresh();
+    noecho();
+    cbreak();
+    clear();
+    start_color();
+    curs_set(0);
+    init_pair(1, COLOR_WHITE, COLOR_BLACK);
+
+    int max_y, max_x;
+    getmaxyx(stdscr, max_y, max_x);
+    int center_y = max_y / 2 - 7;
+    int center_x = max_x / 2 - 15;
+
+    int total_weapons = 0;
+    if(current_user->weapons.Sword==1) total_weapons++;
+    if(current_user->weapons.Dagger==1) total_weapons++;
+    if(current_user->weapons.Normal_Arrow==1) total_weapons++;
+    if(current_user->weapons.Mace==1) total_weapons++;
+    if(current_user->weapons.Magic_Wand==1) total_weapons++;
+
+    int selected = 0;
+    char status[10] = {0};
+
+    while(1) {
+        clear();
+        int k = 0;
+
+        mvprintw(center_y, center_x, ">>>> W E A P O N S <<<<");
+        mvprintw(center_y+16, center_x, "-- Use KEY UP & KEY DOWN to choose Weapon --");
+        mvprintw(center_y+18, center_x, "-- Press ENTER to use! --");
+        mvprintw(center_y+20, center_x, "-- Press Q to exit --");
+
+        if(current_user->weapons.Mace==1) {
+            attron(COLOR_PAIR(1));
+            mvprintw(center_y+4+k*2, center_x, selected == k ? "> Mace" : "  Mace");
+            attroff(COLOR_PAIR(1));
+            status[k] = 'm';
+            k++;
+        }
+        if(current_user->weapons.Dagger==1) {
+            attron(COLOR_PAIR(1));
+            mvprintw(center_y+4+k*2, center_x, selected == k ? "> Dagger" : "  Dagger");
+            attroff(COLOR_PAIR(1));
+            status[k] = 'd';
+            k++;
+        }
+        if(current_user->weapons.Magic_Wand==1) {
+            attron(COLOR_PAIR(1));
+            mvprintw(center_y+4+k*2, center_x, selected == k ? "> Magic Wand" : "  Magic Wand");
+            attroff(COLOR_PAIR(1));
+            status[k] = 'w';
+            k++;
+        }
+        if(current_user->weapons.Normal_Arrow==1) {
+            attron(COLOR_PAIR(1));
+            mvprintw(center_y+4+k*2, center_x, selected == k ? "> Normal Arrow" : "  Normal Arrow");
+            attroff(COLOR_PAIR(1));
+            status[k] = 'n';
+            k++;
+        }
+        if(current_user->weapons.Sword==1) {
+            attron(COLOR_PAIR(1));
+            mvprintw(center_y+4+k*2, center_x, selected == k ? "> Sword" : "  Sword");
+            attroff(COLOR_PAIR(1));
+            status[k] = 's';
+            k++;
+        }
+
+        refresh();
+        int key = getch();
+
+        if(key == 'q' || key == 'Q') {
+            endwin();
+            clear();
+            return 0;
+        }
+
+        switch(key) {
+            case KEY_UP:
+                if(k > 0) {
+                    selected = (selected - 1 + k) % k;
+                }
+                break;
+            case KEY_DOWN:
+                if(k > 0) {
+                    selected = (selected + 1) % k;
+                }
+                break;
+            case '\n':
+            case KEY_ENTER:
+                if(k > 0 && selected >= 0 && selected < k) {
+                    switch(status[selected]) {
+                        case 'm':
+                            clear();
+                            endwin();
+                            return 1;
+                        case 'd':
+                            clear();
+                            endwin();
+                            return 2;
+                        case 'w':
+                            clear();
+                            endwin();
+                            return 3;
+                        case 'n':
+                            clear();
+                            endwin();
+                            return 4;
+                        case 's':
+                            clear();
+                            endwin();
+                            return 5;
+                    }
+
+                }
+                break;
+        }
+    }
+
+    endwin();
+    return 0;
+}
+
+
 int easy_game(struct user *current_user) {
     setlocale(LC_ALL, "");
     initscr();
@@ -931,6 +990,17 @@ int easy_game(struct user *current_user) {
             cori_number[j][i]=0;
         }
     }
+
+
+    ///.........weapons
+
+    current_user->weapons.Mace=0;
+    current_user->weapons.Dagger=0;
+    current_user->weapons.Magic_Wand=0;
+    current_user->weapons.Normal_Arrow=0;
+    current_user->weapons.Sword=0;
+    int in_use_weapon=0;
+
 
     //.........................
 
@@ -1107,7 +1177,7 @@ int easy_game(struct user *current_user) {
     while(np<num_pillars){
         py = rand() % max_y  + 1;
         px = rand() % max_x  + 1;
-        if(map[py][px]=='.'){
+        if(map[py][px]=='.' && map[py+1][px]!='+' && map[py][px-1]!='+' && map[py][px+1]!='+' && map[py-1][px]!='+'){
             map[py][px]='O';
             np++;
         }
@@ -1165,13 +1235,80 @@ int easy_game(struct user *current_user) {
     int x2 = 0, y2 = 0;
     int stairs = 0;
     while(!stairs) {
-        y2 = rand() % max_y  + 1;
-        x2 = rand() % max_x  + 1;
+        y2 = rand() % max_y ;
+        x2 = rand() % max_x ;
         if(map[y2][x2]=='.'){
             map[y2][x2]='<';
             stairs++;
         }
     }
+
+    //weapon
+    int weapon_num= 1 + rand() % 2;
+    int x3=0,y3=0;
+    int weaponi =0 ;
+    while(!weaponi){
+        y3 = rand() % max_y ;
+        x3 = rand() % max_x ;
+        if(map[y3][x3]=='.'){
+            if(weapon_num==1){
+                map[y3][x3]='1';
+                weaponi++;
+            }
+            else if(weapon_num==2){
+                map[y3][x3]='2';
+                weaponi++;
+            }
+            else if(weapon_num==3){
+                map[y3][x3]='3';
+                weaponi++;
+            }
+
+            else if(weapon_num==4){
+                map[y3][x3]='4';
+                weaponi++;
+            }
+
+            else if(weapon_num==5){
+                map[y3][x3]='5';
+                weaponi++;
+            }
+        }
+    }
+
+    weapon_num= 1 + rand() % 4;
+    x3=0,y3=0;
+    weaponi =0 ;
+    while(!weaponi){
+        y3 = rand() % max_y ;
+        x3 = rand() % max_x ;
+        if(map[y3][x3]=='.'){
+            if(weapon_num==1){
+                map[y3][x3]='1';
+                weaponi++;
+            }
+            else if(weapon_num==2){
+                map[y3][x3]='2';
+                weaponi++;
+            }
+            else if(weapon_num==3){
+                map[y3][x3]='3';
+                weaponi++;
+            }
+
+            else if(weapon_num==4){
+                map[y3][x3]='4';
+                weaponi++;
+            }
+
+            else if(weapon_num==5){
+                map[y3][x3]='5';
+                weaponi++;
+            }
+        }
+    }
+
+
 
 
     //place player randomly on map
@@ -1200,6 +1337,7 @@ int easy_game(struct user *current_user) {
     init_pair(6, COLOR_YELLOW, COLOR_BLACK);
     init_pair(7, COLOR_BLACK, COLOR_WHITE);
     init_pair(8, COLOR_YELLOW, COLOR_RED);
+    init_pair(9, COLOR_CYAN, COLOR_BLACK);
     ////////////////////
     int total_yellow_gold=0;
     int total_black_gold=0;
@@ -1211,8 +1349,8 @@ int easy_game(struct user *current_user) {
 
 
    ///////////////////////MAIN///////
-
- // printing map (player movement -- map)
+    setlocale(LC_ALL, "");
+    // printing map (player movement -- map)
     int c;
     int counter=0;
     do {
@@ -1251,8 +1389,33 @@ int easy_game(struct user *current_user) {
                     else if(map[i][j]=='^'){
                         mvaddch(i, j, map[i][j]);
                     }
+                    else if(map[i][j]=='1') {
+                        attron(COLOR_PAIR(9));
+                        mvaddch(i, j, 'M');
+                        attroff(COLOR_PAIR(9));
+                     //mvprintw(i, j, "%lc", (wint_t)0x2692); // ⚒
+                    }
+                    else if(map[i][j]=='2') {
+                        mvprintw(i, j, "%lc", (wint_t)0x1F5E1); // 🗡 ok
+                    }
+                    else if(map[i][j]=='3') {
+                        attron(COLOR_PAIR(9));
+                        mvaddch(i, j, 'W');
+                        attroff(COLOR_PAIR(9));
+                    // mvprintw(i, j, "%lc", (wint_t)0x1FA84); // 🪄
+                    }
+                    else if(map[i][j]=='4') {
+                        mvprintw(i, j, "%lc", (wint_t)0x27B3); // ➳ ok
+                    }
+                    else if(map[i][j]=='5') {
+                        attron(COLOR_PAIR(9));
+                        mvaddch(i, j, 'S');
+                        attroff(COLOR_PAIR(9));
+                     //mvprintw(i, j, "%lc", (wint_t)0x2694); // ⚔
+                        }
                     else {
                         mvaddch(i, j, map[i][j]);
+
                     }
 
                 }
@@ -1262,13 +1425,20 @@ int easy_game(struct user *current_user) {
         int new_y = y;
         int new_x = x;
 
+        if(c=='i'){
+            clear();
+            in_use_weapon= weapon(current_user);
+
+        }
+
+
+
         if(c ==101) { ///food window
             clear();
             int p= food_bar(&food1, &health, &food);
             if(p==3){
                 continue;
             }
-            c = getch();
         }
         if (c == KEY_UP && y > 0) new_y--;
         if (c == KEY_DOWN && y < max_y - 1) new_y++;
@@ -1276,35 +1446,60 @@ int easy_game(struct user *current_user) {
         if (c == KEY_LEFT && x > 0) new_x--;
 
         if(map[new_y][new_x] == '.' || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '+' ||
-           map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^') {
+           map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
+           map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
+           map[new_y][new_x] == '5') {
+
             if(map[new_y][new_x] == '$'){
                 int temp = 2 + (rand() % 3 );
-                mvprintw(2,3,"You received %d GOLDS !",temp);
+                mvprintw(2,3,"You claimed %d GOLDS !            ",temp);
                 total_yellow_gold+= temp;
             }
             if(map[new_y][new_x] == '@'){
                 int temp = 6 + (rand() % 4 );
-                mvprintw(2,3,"You received %d GOLDS !",temp);
+                mvprintw(2,3,"You claimed %d GOLDS !            ",temp);
                 total_black_gold+= temp;
             }
             if(map[new_y][new_x] == 'F'){
                 int temp = 1;
-                mvprintw(2,3,"You received %d FOOD !",temp);
+                mvprintw(2,3,"You claimed %d FOOD !             ",temp);
                 food1+= 1;
                if(food1>5){
                    food1=5;
                }
             }
 
+
             if(map[new_y][new_x] == 'T'){
                 int temp = 1;
-                mvprintw(2,3,"You stepped on a TRAP !",temp);
+                mvprintw(2,3,"You stepped on a TRAP !           ",temp);
                 health=health-2;
                 refresh();
                 map[new_y][new_x]='^';
             }
 
+            if(map[new_y][new_x] == '1'){
+                current_user->weapons.Mace=1;
+                mvprintw(2,3,"You found a Mace!                   ");
+            }
 
+            if(map[new_y][new_x] == '2'){
+                current_user->weapons.Dagger=1;
+                mvprintw(2,3,"You found a Dagger!                  ");
+            }
+
+            if(map[new_y][new_x] == '3'){
+                current_user->weapons.Magic_Wand=1;
+                mvprintw(2,3,"You found a Magic Wand!              ");
+            }
+            if(map[new_y][new_x] == '4'){
+                current_user->weapons.Normal_Arrow=1;
+                mvprintw(2,3,"You found a Normal Arrow!           ");
+            }
+            if(map[new_y][new_x] == '5'){
+                current_user->weapons.Sword=1;
+                mvprintw(2,3,"You found a Sword!                   ");
+            }
             y = new_y;
             x = new_x;
         }
@@ -1347,6 +1542,26 @@ int easy_game(struct user *current_user) {
             mvprintw(max_y-2,30+food," ");
         }
 
+        mvprintw(max_y-2,48,"floor : 1");
+        if(in_use_weapon==1){
+            mvprintw(max_y-2,64,"weapon: Mace");
+        }
+        else if(in_use_weapon==2){
+            mvprintw(max_y-2,64,"weapon: Dagger");
+        }
+        else if(in_use_weapon==3){
+            mvprintw(max_y-2,64,"weapon: Magic Wand");
+        }
+        else if(in_use_weapon==4){
+            mvprintw(max_y-2,64,"weapon: Normal Arrow");
+        }
+        else if(in_use_weapon==4){
+            mvprintw(max_y-2,64,"weapon: Sword");
+        }
+        else {
+            mvprintw(max_y-2,64,"weapon: no weapon in use!");
+        }
+
         counter++;
 
 
@@ -1378,6 +1593,7 @@ int easy_game(struct user *current_user) {
             current_user->health=health;
             current_user->food1=food1;
             current_user->new_golds=total_black_gold+total_yellow_gold;
+            current_user->weapons.in_use_weapon=in_use_weapon;
             return easy_game_f2(current_user);
         }
 
@@ -1386,6 +1602,7 @@ int easy_game(struct user *current_user) {
             current_user->health=health;
             current_user->food1=food1;
             current_user->new_golds=total_black_gold+total_yellow_gold;
+            current_user->weapons.in_use_weapon=in_use_weapon;
             return easy_game_f4(current_user);
 
         }
@@ -1427,6 +1644,9 @@ int easy_game_f2(struct user *current_user) {
             cori_number[j][i]=0;
         }
     }
+    ///.........weapons
+
+    int in_use_weapon= current_user->weapons.in_use_weapon;
 
     //.........................
 
@@ -1599,7 +1819,7 @@ int easy_game_f2(struct user *current_user) {
     while(np<num_pillars){
         py = rand() % max_y  + 1;
         px = rand() % max_x  + 1;
-        if(map[py][px]=='.'){
+        if(map[py][px]=='.' && map[py+1][px]!='+' && map[py][px-1]!='+' && map[py][px+1]!='+' && map[py-1][px]!='+'){
             map[py][px]='O';
             np++;
         }
@@ -1676,6 +1896,71 @@ int easy_game_f2(struct user *current_user) {
         }
     }
 
+    //weapons
+    int weapon_num= 1 + rand() % 2;
+    int x3=0,y3=0;
+    int weaponi =0 ;
+    while(!weaponi){
+        y3 = rand() % max_y ;
+        x3 = rand() % max_x ;
+        if(map[y3][x3]=='.'){
+            if(weapon_num==1){
+                map[y3][x3]='1';
+                weaponi++;
+            }
+            else if(weapon_num==2){
+                map[y3][x3]='2';
+                weaponi++;
+            }
+            else if(weapon_num==3){
+                map[y3][x3]='3';
+                weaponi++;
+            }
+
+            else if(weapon_num==4){
+                map[y3][x3]='4';
+                weaponi++;
+            }
+
+            else if(weapon_num==5){
+                map[y3][x3]='5';
+                weaponi++;
+            }
+        }
+    }
+
+    weapon_num= 1 + rand() % 4;
+    x3=0,y3=0;
+    weaponi =0 ;
+    while(!weaponi){
+        y3 = rand() % max_y ;
+        x3 = rand() % max_x ;
+        if(map[y3][x3]=='.'){
+            if(weapon_num==1){
+                map[y3][x3]='1';
+                weaponi++;
+            }
+            else if(weapon_num==2){
+                map[y3][x3]='2';
+                weaponi++;
+            }
+            else if(weapon_num==3){
+                map[y3][x3]='3';
+                weaponi++;
+            }
+
+            else if(weapon_num==4){
+                map[y3][x3]='4';
+                weaponi++;
+            }
+
+            else if(weapon_num==5){
+                map[y3][x3]='5';
+                weaponi++;
+            }
+        }
+    }
+
     stairs = 0;
     while(!stairs) {
         y2 = rand() % max_y  + 1;
@@ -1743,8 +2028,33 @@ int easy_game_f2(struct user *current_user) {
                     else if(map[i][j]=='^'){
                         mvaddch(i, j, map[i][j]);
                     }
+                    else if(map[i][j]=='1') {
+                        attron(COLOR_PAIR(9));
+                        mvaddch(i, j, 'M');
+                        attroff(COLOR_PAIR(9));
+                        //mvprintw(i, j, "%lc", (wint_t)0x2692); // ⚒
+                    }
+                    else if(map[i][j]=='2') {
+                        mvprintw(i, j, "%lc", (wint_t)0x1F5E1); // 🗡 ok
+                    }
+                    else if(map[i][j]=='3') {
+                        attron(COLOR_PAIR(9));
+                        mvaddch(i, j, 'W');
+                        attroff(COLOR_PAIR(9));
+                        // mvprintw(i, j, "%lc", (wint_t)0x1FA84); // 🪄
+                    }
+                    else if(map[i][j]=='4') {
+                        mvprintw(i, j, "%lc", (wint_t)0x27B3); // ➳ ok
+                    }
+                    else if(map[i][j]=='5') {
+                        attron(COLOR_PAIR(9));
+                        mvaddch(i, j, 'S');
+                        attroff(COLOR_PAIR(9));
+                        //mvprintw(i, j, "%lc", (wint_t)0x2694); // ⚔
+                    }
                     else {
                         mvaddch(i, j, map[i][j]);
+
                     }
 
                 }
@@ -1753,6 +2063,12 @@ int easy_game_f2(struct user *current_user) {
 
         int new_y = y;
         int new_x = x;
+
+        if(c=='i'){
+            clear();
+            in_use_weapon= weapon(current_user);
+
+        }
 
         if(c ==101) { ///food window
             clear();
@@ -1768,35 +2084,60 @@ int easy_game_f2(struct user *current_user) {
         if (c == KEY_LEFT && x > 0) new_x--;
 
         if(map[new_y][new_x] == '.' || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '+' ||
-           map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^') {
+           map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
+           map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
+           map[new_y][new_x] == '5') {
+
             if(map[new_y][new_x] == '$'){
                 int temp = 2 + (rand() % 3 );
-                mvprintw(2,3,"You received %d GOLDS !",temp);
+                mvprintw(2,3,"You claimed %d GOLDS !            ",temp);
                 total_yellow_gold+= temp;
             }
             if(map[new_y][new_x] == '@'){
                 int temp = 6 + (rand() % 4 );
-                mvprintw(2,3,"You received %d GOLDS !",temp);
+                mvprintw(2,3,"You claimed %d GOLDS !            ",temp);
                 total_black_gold+= temp;
             }
             if(map[new_y][new_x] == 'F'){
                 int temp = 1;
-                mvprintw(2,3,"You received %d FOOD !",temp);
+                mvprintw(2,3,"You claimed %d FOOD !             ",temp);
                 food1+= 1;
                 if(food1>5){
                     food1=5;
                 }
             }
 
+
             if(map[new_y][new_x] == 'T'){
                 int temp = 1;
-                mvprintw(2,3,"You stepped on a TRAP !",temp);
+                mvprintw(2,3,"You stepped on a TRAP !           ",temp);
                 health=health-2;
                 refresh();
                 map[new_y][new_x]='^';
             }
 
+            if(map[new_y][new_x] == '1'){
+                current_user->weapons.Mace=1;
+                mvprintw(2,3,"You found a Mace!                   ");
+            }
 
+            if(map[new_y][new_x] == '2'){
+                current_user->weapons.Dagger=1;
+                mvprintw(2,3,"You found a Dagger!                  ");
+            }
+
+            if(map[new_y][new_x] == '3'){
+                current_user->weapons.Magic_Wand=1;
+                mvprintw(2,3,"You found a Magic Wand!              ");
+            }
+            if(map[new_y][new_x] == '4'){
+                current_user->weapons.Normal_Arrow=1;
+                mvprintw(2,3,"You found a Normal Arrow!           ");
+            }
+            if(map[new_y][new_x] == '5'){
+                current_user->weapons.Sword=1;
+                mvprintw(2,3,"You found a Sword!                   ");
+            }
             y = new_y;
             x = new_x;
         }
@@ -1839,6 +2180,27 @@ int easy_game_f2(struct user *current_user) {
             mvprintw(max_y-2,30+food," ");
         }
 
+        mvprintw(max_y-2,48,"floor : 2");
+        if(in_use_weapon==1){
+            mvprintw(max_y-2,64,"weapon: Mace");
+        }
+        else if(in_use_weapon==2){
+            mvprintw(max_y-2,64,"weapon: Dagger");
+        }
+        else if(in_use_weapon==3){
+            mvprintw(max_y-2,64,"weapon: Magic Wand");
+        }
+        else if(in_use_weapon==4){
+            mvprintw(max_y-2,64,"weapon: Normal Arrow");
+        }
+        else if(in_use_weapon==4){
+            mvprintw(max_y-2,64,"weapon: Sword");
+        }
+        else {
+            mvprintw(max_y-2,64,"weapon: no weapon in use!");
+        }
+
+
         counter++;
 
 
@@ -1870,6 +2232,7 @@ int easy_game_f2(struct user *current_user) {
             current_user->health=health;
             current_user->food1=food1;
             current_user->new_golds+=total_black_gold+total_yellow_gold;
+            current_user->weapons.in_use_weapon=in_use_weapon;
             return easy_game_f3(current_user);
         }
 
@@ -1910,6 +2273,9 @@ int easy_game_f3(struct user *current_user) {
             cori_number[j][i]=0;
         }
     }
+    ///.........weapons
+
+    int in_use_weapon= current_user->weapons.in_use_weapon;
 
     //.........................
 
@@ -2082,7 +2448,7 @@ int easy_game_f3(struct user *current_user) {
     while(np<num_pillars){
         py = rand() % max_y  + 1;
         px = rand() % max_x  + 1;
-        if(map[py][px]=='.'){
+        if(map[py][px]=='.' && map[py+1][px]!='+' && map[py][px-1]!='+' && map[py][px+1]!='+' && map[py-1][px]!='+'){
             map[py][px]='O';
             np++;
         }
@@ -2159,6 +2525,71 @@ int easy_game_f3(struct user *current_user) {
         }
     }
 
+    //weapons
+    int weapon_num= 1 + rand() % 2;
+    int x3=0,y3=0;
+    int weaponi =0 ;
+    while(!weaponi){
+        y3 = rand() % max_y ;
+        x3 = rand() % max_x ;
+        if(map[y3][x3]=='.'){
+            if(weapon_num==1){
+                map[y3][x3]='1';
+                weaponi++;
+            }
+            else if(weapon_num==2){
+                map[y3][x3]='2';
+                weaponi++;
+            }
+            else if(weapon_num==3){
+                map[y3][x3]='3';
+                weaponi++;
+            }
+
+            else if(weapon_num==4){
+                map[y3][x3]='4';
+                weaponi++;
+            }
+
+            else if(weapon_num==5){
+                map[y3][x3]='5';
+                weaponi++;
+            }
+        }
+    }
+
+    weapon_num= 1 + rand() % 4;
+    x3=0,y3=0;
+    weaponi =0 ;
+    while(!weaponi){
+        y3 = rand() % max_y ;
+        x3 = rand() % max_x ;
+        if(map[y3][x3]=='.'){
+            if(weapon_num==1){
+                map[y3][x3]='1';
+                weaponi++;
+            }
+            else if(weapon_num==2){
+                map[y3][x3]='2';
+                weaponi++;
+            }
+            else if(weapon_num==3){
+                map[y3][x3]='3';
+                weaponi++;
+            }
+
+            else if(weapon_num==4){
+                map[y3][x3]='4';
+                weaponi++;
+            }
+
+            else if(weapon_num==5){
+                map[y3][x3]='5';
+                weaponi++;
+            }
+        }
+    }
+
     stairs = 0;
     while(!stairs) {
         y2 = rand() % max_y  + 1;
@@ -2230,8 +2661,33 @@ int easy_game_f3(struct user *current_user) {
                     else if(map[i][j]=='^'){
                         mvaddch(i, j, map[i][j]);
                     }
+                    else if(map[i][j]=='1') {
+                        attron(COLOR_PAIR(9));
+                        mvaddch(i, j, 'M');
+                        attroff(COLOR_PAIR(9));
+                        //mvprintw(i, j, "%lc", (wint_t)0x2692); // ⚒
+                    }
+                    else if(map[i][j]=='2') {
+                        mvprintw(i, j, "%lc", (wint_t)0x1F5E1); // 🗡 ok
+                    }
+                    else if(map[i][j]=='3') {
+                        attron(COLOR_PAIR(9));
+                        mvaddch(i, j, 'W');
+                        attroff(COLOR_PAIR(9));
+                        // mvprintw(i, j, "%lc", (wint_t)0x1FA84); // 🪄
+                    }
+                    else if(map[i][j]=='4') {
+                        mvprintw(i, j, "%lc", (wint_t)0x27B3); // ➳ ok
+                    }
+                    else if(map[i][j]=='5') {
+                        attron(COLOR_PAIR(9));
+                        mvaddch(i, j, 'S');
+                        attroff(COLOR_PAIR(9));
+                        //mvprintw(i, j, "%lc", (wint_t)0x2694); // ⚔
+                    }
                     else {
                         mvaddch(i, j, map[i][j]);
+
                     }
 
                 }
@@ -2240,6 +2696,12 @@ int easy_game_f3(struct user *current_user) {
 
         int new_y = y;
         int new_x = x;
+
+        if(c=='i'){ //weapon
+            clear();
+            in_use_weapon= weapon(current_user);
+
+        }
 
         if(c ==101) { ///food window
             clear();
@@ -2255,35 +2717,60 @@ int easy_game_f3(struct user *current_user) {
         if (c == KEY_LEFT && x > 0) new_x--;
 
         if(map[new_y][new_x] == '.' || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '+' ||
-           map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^') {
+           map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
+           map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
+           map[new_y][new_x] == '5') {
+
             if(map[new_y][new_x] == '$'){
                 int temp = 2 + (rand() % 3 );
-                mvprintw(2,3,"You received %d GOLDS !",temp);
+                mvprintw(2,3,"You claimed %d GOLDS !            ",temp);
                 total_yellow_gold+= temp;
             }
             if(map[new_y][new_x] == '@'){
                 int temp = 6 + (rand() % 4 );
-                mvprintw(2,3,"You received %d GOLDS !",temp);
+                mvprintw(2,3,"You claimed %d GOLDS !            ",temp);
                 total_black_gold+= temp;
             }
             if(map[new_y][new_x] == 'F'){
                 int temp = 1;
-                mvprintw(2,3,"You received %d FOOD !",temp);
+                mvprintw(2,3,"You claimed %d FOOD !             ",temp);
                 food1+= 1;
                 if(food1>5){
                     food1=5;
                 }
             }
 
+
             if(map[new_y][new_x] == 'T'){
                 int temp = 1;
-                mvprintw(2,3,"You stepped on a TRAP !",temp);
+                mvprintw(2,3,"You stepped on a TRAP !           ",temp);
                 health=health-2;
                 refresh();
                 map[new_y][new_x]='^';
             }
 
+            if(map[new_y][new_x] == '1'){
+                current_user->weapons.Mace=1;
+                mvprintw(2,3,"You found a Mace!                   ");
+            }
 
+            if(map[new_y][new_x] == '2'){
+                current_user->weapons.Dagger=1;
+                mvprintw(2,3,"You found a Dagger!                  ");
+            }
+
+            if(map[new_y][new_x] == '3'){
+                current_user->weapons.Magic_Wand=1;
+                mvprintw(2,3,"You found a Magic Wand!              ");
+            }
+            if(map[new_y][new_x] == '4'){
+                current_user->weapons.Normal_Arrow=1;
+                mvprintw(2,3,"You found a Normal Arrow!           ");
+            }
+            if(map[new_y][new_x] == '5'){
+                current_user->weapons.Sword=1;
+                mvprintw(2,3,"You found a Sword!                   ");
+            }
             y = new_y;
             x = new_x;
         }
@@ -2328,6 +2815,27 @@ int easy_game_f3(struct user *current_user) {
 
         counter++;
 
+        mvprintw(max_y-2,48,"floor : 3");
+        if(in_use_weapon==1){
+            mvprintw(max_y-2,64,"weapon: Mace");
+        }
+        else if(in_use_weapon==2){
+            mvprintw(max_y-2,64,"weapon: Dagger");
+        }
+        else if(in_use_weapon==3){
+            mvprintw(max_y-2,64,"weapon: Magic Wand");
+        }
+        else if(in_use_weapon==4){
+            mvprintw(max_y-2,64,"weapon: Normal Arrow");
+        }
+        else if(in_use_weapon==4){
+            mvprintw(max_y-2,64,"weapon: Sword");
+        }
+        else {
+            mvprintw(max_y-2,64,"weapon: no weapon in use!");
+        }
+
+
 
         refresh();
         if( map[new_y][new_x]=='#'){
@@ -2357,6 +2865,7 @@ int easy_game_f3(struct user *current_user) {
             current_user->health=health;
             current_user->food1=food1;
             current_user->new_golds+=total_black_gold+total_yellow_gold;
+            current_user->weapons.in_use_weapon=in_use_weapon;
             return easy_game_f4(current_user);
         }
 
@@ -2397,6 +2906,10 @@ int easy_game_f4(struct user *current_user) {
             cori_number[j][i]=0;
         }
     }
+
+    ///.........weapons
+
+    int in_use_weapon= current_user->weapons.in_use_weapon;
 
     //.........................
 
@@ -2588,7 +3101,7 @@ int easy_game_f4(struct user *current_user) {
     while(np<num_pillars){
         py = rand() % max_y  + 1;
         px = rand() % max_x  + 1;
-        if(map[py][px]=='.' && room_number[py][px]!=number_of_rooms){
+        if(map[py][px]=='.' && map[py+1][px]!='+' && map[py][px-1]!='+' && map[py][px+1]!='+' && map[py-1][px]!='+'){
             map[py][px]='O';
             np++;
         }
@@ -2703,6 +3216,71 @@ int easy_game_f4(struct user *current_user) {
         }
     }
 
+    //weapons
+    int weapon_num= 1 + rand() % 2;
+    int x3=0,y3=0;
+    int weaponi =0 ;
+    while(!weaponi){
+        y3 = rand() % max_y ;
+        x3 = rand() % max_x ;
+        if(map[y3][x3]=='.'){
+            if(weapon_num==1){
+                map[y3][x3]='1';
+                weaponi++;
+            }
+            else if(weapon_num==2){
+                map[y3][x3]='2';
+                weaponi++;
+            }
+            else if(weapon_num==3){
+                map[y3][x3]='3';
+                weaponi++;
+            }
+
+            else if(weapon_num==4){
+                map[y3][x3]='4';
+                weaponi++;
+            }
+
+            else if(weapon_num==5){
+                map[y3][x3]='5';
+                weaponi++;
+            }
+        }
+    }
+
+    weapon_num= 1 + rand() % 4;
+    x3=0,y3=0;
+    weaponi =0 ;
+    while(!weaponi){
+        y3 = rand() % max_y ;
+        x3 = rand() % max_x ;
+        if(map[y3][x3]=='.'){
+            if(weapon_num==1){
+                map[y3][x3]='1';
+                weaponi++;
+            }
+            else if(weapon_num==2){
+                map[y3][x3]='2';
+                weaponi++;
+            }
+            else if(weapon_num==3){
+                map[y3][x3]='3';
+                weaponi++;
+            }
+
+            else if(weapon_num==4){
+                map[y3][x3]='4';
+                weaponi++;
+            }
+
+            else if(weapon_num==5){
+                map[y3][x3]='5';
+                weaponi++;
+            }
+        }
+    }
+
     stairs = 0;
     while(!stairs) {
         y2 = rand() % max_y  + 1;
@@ -2770,8 +3348,33 @@ int easy_game_f4(struct user *current_user) {
                     else if(map[i][j]=='^'){
                         mvaddch(i, j, map[i][j]);
                     }
+                    else if(map[i][j]=='1') {
+                        attron(COLOR_PAIR(9));
+                        mvaddch(i, j, 'M');
+                        attroff(COLOR_PAIR(9));
+                        //mvprintw(i, j, "%lc", (wint_t)0x2692); // ⚒
+                    }
+                    else if(map[i][j]=='2') {
+                        mvprintw(i, j, "%lc", (wint_t)0x1F5E1); // 🗡 ok
+                    }
+                    else if(map[i][j]=='3') {
+                        attron(COLOR_PAIR(9));
+                        mvaddch(i, j, 'W');
+                        attroff(COLOR_PAIR(9));
+                        // mvprintw(i, j, "%lc", (wint_t)0x1FA84); // 🪄
+                    }
+                    else if(map[i][j]=='4') {
+                        mvprintw(i, j, "%lc", (wint_t)0x27B3); // ➳ ok
+                    }
+                    else if(map[i][j]=='5') {
+                        attron(COLOR_PAIR(9));
+                        mvaddch(i, j, 'S');
+                        attroff(COLOR_PAIR(9));
+                        //mvprintw(i, j, "%lc", (wint_t)0x2694); // ⚔
+                    }
                     else {
                         mvaddch(i, j, map[i][j]);
+
                     }
 
                 }
@@ -2818,6 +3421,12 @@ int easy_game_f4(struct user *current_user) {
         int new_y = y;
         int new_x = x;
 
+        if(c=='i'){//weapon
+            clear();
+            in_use_weapon= weapon(current_user);
+
+        }
+
         if(c ==101) { ///food window
             clear();
             int p= food_bar(&food1, &health, &food);
@@ -2832,35 +3441,60 @@ int easy_game_f4(struct user *current_user) {
         if (c == KEY_LEFT && x > 0) new_x--;
 
         if(map[new_y][new_x] == '.' || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '+' ||
-           map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^') {
+           map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
+           map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
+           map[new_y][new_x] == '5') {
+
             if(map[new_y][new_x] == '$'){
                 int temp = 2 + (rand() % 3 );
-                mvprintw(2,3,"You received %d GOLDS !",temp);
+                mvprintw(2,3,"You claimed %d GOLDS !            ",temp);
                 total_yellow_gold+= temp;
             }
             if(map[new_y][new_x] == '@'){
                 int temp = 6 + (rand() % 4 );
-                mvprintw(2,3,"You received %d GOLDS !",temp);
+                mvprintw(2,3,"You claimed %d GOLDS !            ",temp);
                 total_black_gold+= temp;
             }
             if(map[new_y][new_x] == 'F'){
                 int temp = 1;
-                mvprintw(2,3,"You received %d FOOD !",temp);
+                mvprintw(2,3,"You claimed %d FOOD !             ",temp);
                 food1+= 1;
                 if(food1>5){
                     food1=5;
                 }
             }
 
+
             if(map[new_y][new_x] == 'T'){
                 int temp = 1;
-                mvprintw(2,3,"You stepped on a TRAP !",temp);
+                mvprintw(2,3,"You stepped on a TRAP !           ",temp);
                 health=health-2;
                 refresh();
                 map[new_y][new_x]='^';
             }
 
+            if(map[new_y][new_x] == '1'){
+                current_user->weapons.Mace=1;
+                mvprintw(2,3,"You found a Mace!                   ");
+            }
 
+            if(map[new_y][new_x] == '2'){
+                current_user->weapons.Dagger=1;
+                mvprintw(2,3,"You found a Dagger!                  ");
+            }
+
+            if(map[new_y][new_x] == '3'){
+                current_user->weapons.Magic_Wand=1;
+                mvprintw(2,3,"You found a Magic Wand!              ");
+            }
+            if(map[new_y][new_x] == '4'){
+                current_user->weapons.Normal_Arrow=1;
+                mvprintw(2,3,"You found a Normal Arrow!           ");
+            }
+            if(map[new_y][new_x] == '5'){
+                current_user->weapons.Sword=1;
+                mvprintw(2,3,"You found a Sword!                   ");
+            }
             y = new_y;
             x = new_x;
         }
@@ -2905,6 +3539,27 @@ int easy_game_f4(struct user *current_user) {
 
         counter++;
 
+        mvprintw(max_y-2,48,"floor : 4");
+        if(in_use_weapon==1){
+            mvprintw(max_y-2,64,"weapon: Mace");
+        }
+        else if(in_use_weapon==2){
+            mvprintw(max_y-2,64,"weapon: Dagger");
+        }
+        else if(in_use_weapon==3){
+            mvprintw(max_y-2,64,"weapon: Magic Wand");
+        }
+        else if(in_use_weapon==4){
+            mvprintw(max_y-2,64,"weapon: Normal Arrow");
+        }
+        else if(in_use_weapon==4){
+            mvprintw(max_y-2,64,"weapon: Sword");
+        }
+        else {
+            mvprintw(max_y-2,64,"weapon: no weapon in use!");
+        }
+
+
 
         refresh();
         if( map[new_y][new_x]=='#'){
@@ -2934,6 +3589,7 @@ int easy_game_f4(struct user *current_user) {
             current_user->health=health;
             current_user->food1=food1;
             current_user->new_golds+=total_black_gold+total_yellow_gold;
+            current_user->weapons.in_use_weapon=in_use_weapon;
             return 1;
         }
 
@@ -2995,7 +3651,6 @@ int victory(struct user *current_user){
                     return 1;
                 }
                 refresh();
-                getch();
                 break;
         }
     }
