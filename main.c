@@ -1466,6 +1466,18 @@ int easy_game(struct user *current_user) {
 
 
     ////////////////
+    int no_lock=0;
+    while(1){
+        int y6=rand()%max_y;
+        int x6=rand()%max_x;
+        if(map[y6][x6]=='.' ){
+            map[y6][x6]='/';
+            break;
+        }
+    }
+
+
+
 
     clear();
 
@@ -1568,6 +1580,11 @@ int easy_game(struct user *current_user) {
                     else if(map[i][j]=='='){
                         mvprintw(i, j, "%lc", (wint_t)0x23F9);
                     }
+                    else if(map[i][j]=='/'){
+                        attron(COLOR_PAIR(6));
+                        mvprintw(i, j, "%lc", (wint_t)0x25B3);
+                        attroff(COLOR_PAIR(6));
+                    }
                     else {
                         mvaddch(i, j, map[i][j]);
 
@@ -1603,7 +1620,13 @@ int easy_game(struct user *current_user) {
         if( (map[new_y][new_x] == '+' && (locked[new_y][new_x]==0 || locked[new_y][new_x]==2)) || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '.' ||
            map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
            map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
-           map[new_y][new_x] == '5' || map[new_y][new_x]=='=') {
+           map[new_y][new_x] == '5' || map[new_y][new_x]=='=' || map[new_y][new_x]=='/') {
+
+
+            if(map[new_y][new_x]=='/'){
+                mvprintw(2,3,"You found an Ancient Key !              ");
+                no_lock=1;
+            }
 
             if(map[new_y][new_x]=='=' && password_counter<=3){
                 char arrpass[]="0123456789";
@@ -1611,7 +1634,7 @@ int easy_game(struct user *current_user) {
                     int temp=rand() % 9;
                     password[i9]=arrpass[temp];
                 }
-                mvprintw(4,3,"Password is %s                                          ",password);
+                mvprintw(3,3,"Password is %s                                          ",password);
 
             }
 
@@ -1668,6 +1691,7 @@ int easy_game(struct user *current_user) {
             y = new_y;
             x = new_x;
         }
+        mvprintw(3,3,"                                                      ",password);
 
         if(map[y][x]!='+' && map[y][x]!='#'&&map[y][x]!='^' && map[y][x]!='='){
             map[y][x]='.';
@@ -1698,46 +1722,62 @@ int easy_game(struct user *current_user) {
 
         mvprintw(5,3,"                                                                ");
 
-        if( locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+
+
+
+
+
+
+
+        if(locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
           new_y-1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
           new_y==cordinate_locked[0] && new_x+1==cordinate_locked[1] ||
           new_y==cordinate_locked[0] && new_x-1==cordinate_locked[1] )){
             mvprintw(4,3,"                                                               ",password);
-            if(password_counter>3){
-                attron(COLOR_PAIR(14));
-              mvprintw(5,3,"The door has been locked forever!!                   ");
-                attroff(COLOR_PAIR(14));
+            if (no_lock==0){
+                if(password_counter>3){
+                    attron(COLOR_PAIR(14));
+                    mvprintw(3,3,"The door has been locked forever!!                   ");
+                    attroff(COLOR_PAIR(14));
+                }
+                else {
+                    mvprintw(3,3,"The door is locked. Press L to enter the pass !");
+                }
+                if(c=='l' && password_counter<=3){
+                    status=code(password);
+                }
+                if(status==1 && password_counter<=3 ){
+                    locked[cordinate_locked[0]][cordinate_locked[1]]=2;
+                    mvprintw(3,3,"The door is unlocked !                                       ");
+
+                }
+                else if(status==0 && password_counter<=3){
+                    if(password_counter==1){
+                        attron(COLOR_PAIR(12));
+                        mvprintw(3,3,"Wrong password!                                ");
+                        attroff(COLOR_PAIR(12));
+                    }
+                    else if(password_counter==2){
+                        attron(COLOR_PAIR(13));
+                        mvprintw(3,3,"Wrong password!                                ");
+                        attroff(COLOR_PAIR(13));
+                    }
+                    else if(password_counter==3){
+                        attron(COLOR_PAIR(14));
+                        mvprintw(3,3,"Wrong password! Door locked forever!!                          ");
+                        attroff(COLOR_PAIR(14));
+                    }
+                }
+
+
+                password_counter++;
             }
-            else {
-                mvprintw(5,3,"The door is locked. Press L to enter the pass !");
-            }
-            if(c=='l' && password_counter<=3){
-                status=code(password);
-            }
-            if(status==1 && password_counter<=3 ){
+            else if(no_lock==1){
                 locked[cordinate_locked[0]][cordinate_locked[1]]=2;
                 mvprintw(5,3,"The door is unlocked !                                       ");
                 mvprintw(4,3,"                                                            ");
+            }
 
-            }
-            else if(status==0 && password_counter<=3){
-                if(password_counter==1){
-                    attron(COLOR_PAIR(12));
-                  mvprintw(5,3,"Wrong password!                                ");
-                    attroff(COLOR_PAIR(12));
-                }
-                else if(password_counter==2){
-                    attron(COLOR_PAIR(13));
-                  mvprintw(5,3,"Wrong password!                                ");
-                    attroff(COLOR_PAIR(13));
-                }
-                else if(password_counter==3){
-                    attron(COLOR_PAIR(14));
-                  mvprintw(5,3,"Wrong password! Door locked forever!!                          ");
-                    attroff(COLOR_PAIR(14));
-                }
-            }
-            password_counter++;
 
         }
         if(counter==40){
@@ -2239,6 +2279,16 @@ int easy_game_f2(struct user *current_user) {
         }
     }
 
+    int no_lock=0;
+    while(1){
+        int y6=rand()%max_y;
+        int x6=rand()%max_x;
+        if(map[y6][x6]=='.' ){
+            map[y6][x6]='/';
+            break;
+        }
+    }
+
 
 
     ////////////////
@@ -2345,6 +2395,11 @@ int easy_game_f2(struct user *current_user) {
                     else if(map[i][j]=='='){
                         mvprintw(i, j, "%lc", (wint_t)0x23F9);
                     }
+                    else if(map[i][j]=='/'){
+                        attron(COLOR_PAIR(6));
+                        mvprintw(i, j, "%lc", (wint_t)0x25B3);
+                        attroff(COLOR_PAIR(6));
+                    }
                     else {
                         mvaddch(i, j, map[i][j]);
 
@@ -2379,7 +2434,13 @@ int easy_game_f2(struct user *current_user) {
         if( (map[new_y][new_x] == '+' && (locked[new_y][new_x]==0 || locked[new_y][new_x]==2)) || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '.' ||
             map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
             map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
-            map[new_y][new_x] == '5' || map[new_y][new_x]=='=') {
+            map[new_y][new_x] == '5' || map[new_y][new_x]=='=' || map[new_y][new_x]=='/') {
+
+            if(map[new_y][new_x]=='/'){
+                mvprintw(2,3,"You found an Ancient Key !              ");
+                no_lock=1;
+            }
+
 
             if(map[new_y][new_x]=='=' && password_counter<=3){
                 char arrpass[]="0123456789";
@@ -2387,23 +2448,23 @@ int easy_game_f2(struct user *current_user) {
                     int temp=rand() % 9;
                     password[i9]=arrpass[temp];
                 }
-                mvprintw(4,3,"Password is %s                                          ",password);
+                mvprintw(3,3,"Password is %s                                          ",password);
 
             }
 
             if(map[new_y][new_x] == '$'){
                 int temp = 2 + (rand() % 3 );
-                mvprintw(2,3,"You claimed %d GOLDS !            ",temp);
+                mvprintw(3,3,"You claimed %d GOLDS !            ",temp);
                 total_yellow_gold+= temp;
             }
             if(map[new_y][new_x] == '@'){
                 int temp = 6 + (rand() % 4 );
-                mvprintw(2,3,"You claimed %d GOLDS !            ",temp);
+                mvprintw(3,3,"You claimed %d GOLDS !            ",temp);
                 total_black_gold+= temp;
             }
             if(map[new_y][new_x] == 'F'){
                 int temp = 1;
-                mvprintw(2,3,"You claimed %d FOOD !             ",temp);
+                mvprintw(3,3,"You claimed %d FOOD !             ",temp);
                 food1+= 1;
                 if(food1>5){
                     food1=5;
@@ -2475,46 +2536,57 @@ int easy_game_f2(struct user *current_user) {
 
         mvprintw(5,3,"                                                                ");
 
-        if( locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
-          new_y-1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
-          new_y==cordinate_locked[0] && new_x+1==cordinate_locked[1] ||
-          new_y==cordinate_locked[0] && new_x-1==cordinate_locked[1] )){
+
+
+        if(locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+                                                                   new_y-1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+                                                                   new_y==cordinate_locked[0] && new_x+1==cordinate_locked[1] ||
+                                                                   new_y==cordinate_locked[0] && new_x-1==cordinate_locked[1] )){
             mvprintw(4,3,"                                                               ",password);
-            if(password_counter>3){
-                attron(COLOR_PAIR(14));
-              mvprintw(5,3,"The door has been locked forever!!                   ");
-                attroff(COLOR_PAIR(14));
+            if (no_lock==0){
+                if(password_counter>3){
+                    attron(COLOR_PAIR(14));
+                    mvprintw(3,3,"The door has been locked forever!!                   ");
+                    attroff(COLOR_PAIR(14));
+                }
+                else {
+                    mvprintw(3,3,"The door is locked. Press L to enter the pass !");
+                }
+                if(c=='l' && password_counter<=3){
+                    status=code(password);
+                }
+                if(status==1 && password_counter<=3 ){
+                    locked[cordinate_locked[0]][cordinate_locked[1]]=2;
+                    mvprintw(3,3,"The door is unlocked !                                       ");
+
+                }
+                else if(status==0 && password_counter<=3){
+                    if(password_counter==1){
+                        attron(COLOR_PAIR(12));
+                        mvprintw(3,3,"Wrong password!                                ");
+                        attroff(COLOR_PAIR(12));
+                    }
+                    else if(password_counter==2){
+                        attron(COLOR_PAIR(13));
+                        mvprintw(3,3,"Wrong password!                                ");
+                        attroff(COLOR_PAIR(13));
+                    }
+                    else if(password_counter==3){
+                        attron(COLOR_PAIR(14));
+                        mvprintw(3,3,"Wrong password! Door locked forever!!                          ");
+                        attroff(COLOR_PAIR(14));
+                    }
+                }
+
+
+                password_counter++;
             }
-            else {
-                mvprintw(5,3,"The door is locked. Press L to enter the pass !");
-            }
-            if(c=='l' && password_counter<=3){
-                status=code(password);
-            }
-            if(status==1 && password_counter<=3 ){
+            else if(no_lock==1){
                 locked[cordinate_locked[0]][cordinate_locked[1]]=2;
                 mvprintw(5,3,"The door is unlocked !                                       ");
                 mvprintw(4,3,"                                                            ");
+            }
 
-            }
-            else if(status==0 && password_counter<=3){
-                if(password_counter==1){
-                    attron(COLOR_PAIR(12));
-                  mvprintw(5,3,"Wrong password!                                ");
-                    attroff(COLOR_PAIR(12));
-                }
-                else if(password_counter==2){
-                    attron(COLOR_PAIR(13));
-                  mvprintw(5,3,"Wrong password!                                ");
-                    attroff(COLOR_PAIR(13));
-                }
-                else if(password_counter==3){
-                    attron(COLOR_PAIR(14));
-                  mvprintw(5,3,"Wrong password! Door locked forever!!                          ");
-                    attroff(COLOR_PAIR(14));
-                }
-            }
-            password_counter++;
 
         }
         if(counter==40){
@@ -3007,6 +3079,16 @@ int easy_game_f3(struct user *current_user) {
         }
     }
 
+    int no_lock=0;
+    while(1){
+        int y6=rand()%max_y;
+        int x6=rand()%max_x;
+        if(map[y6][x6]=='.' ){
+            map[y6][x6]='/';
+            break;
+        }
+    }
+
 
 
     ////////////////
@@ -3116,6 +3198,11 @@ int easy_game_f3(struct user *current_user) {
                     else if(map[i][j]=='='){
                         mvprintw(i, j, "%lc", (wint_t)0x23F9);
                     }
+                    else if(map[i][j]=='/'){
+                        attron(COLOR_PAIR(6));
+                        mvprintw(i, j, "%lc", (wint_t)0x25B3);
+                        attroff(COLOR_PAIR(6));
+                    }
                     else {
                         mvaddch(i, j, map[i][j]);
 
@@ -3150,7 +3237,12 @@ int easy_game_f3(struct user *current_user) {
         if( (map[new_y][new_x] == '+' && (locked[new_y][new_x]==0 || locked[new_y][new_x]==2)) || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '.' ||
             map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
             map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
-            map[new_y][new_x] == '5' || map[new_y][new_x]=='=') {
+            map[new_y][new_x] == '5' || map[new_y][new_x]=='='|| map[new_y][new_x]=='/') {
+
+            if(map[new_y][new_x]=='/'){
+                mvprintw(2,3,"You found an Ancient Key !              ");
+                no_lock=1;
+            }
 
             if(map[new_y][new_x]=='='&& password_counter<=3){
                 char arrpass[]="0123456789";
@@ -3158,7 +3250,7 @@ int easy_game_f3(struct user *current_user) {
                     int temp=rand() % 9;
                     password[i9]=arrpass[temp];
                 }
-                mvprintw(4,3,"Password is %s                                          ",password);
+                mvprintw(3,3,"Password is %s                                          ",password);
 
             }
 
@@ -3246,46 +3338,56 @@ int easy_game_f3(struct user *current_user) {
 
         mvprintw(5,3,"                                                                ");
 
-        if( locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
-          new_y-1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
-          new_y==cordinate_locked[0] && new_x+1==cordinate_locked[1] ||
-          new_y==cordinate_locked[0] && new_x-1==cordinate_locked[1] )){
+
+        if(locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+                                                                   new_y-1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+                                                                   new_y==cordinate_locked[0] && new_x+1==cordinate_locked[1] ||
+                                                                   new_y==cordinate_locked[0] && new_x-1==cordinate_locked[1] )){
             mvprintw(4,3,"                                                               ",password);
-            if(password_counter>3){
-                attron(COLOR_PAIR(14));
-              mvprintw(5,3,"The door has been locked forever!!                   ");
-                attroff(COLOR_PAIR(14));
+            if (no_lock==0){
+                if(password_counter>3){
+                    attron(COLOR_PAIR(14));
+                    mvprintw(3,3,"The door has been locked forever!!                   ");
+                    attroff(COLOR_PAIR(14));
+                }
+                else {
+                    mvprintw(3,3,"The door is locked. Press L to enter the pass !");
+                }
+                if(c=='l' && password_counter<=3){
+                    status=code(password);
+                }
+                if(status==1 && password_counter<=3 ){
+                    locked[cordinate_locked[0]][cordinate_locked[1]]=2;
+                    mvprintw(3,3,"The door is unlocked !                                       ");
+
+                }
+                else if(status==0 && password_counter<=3){
+                    if(password_counter==1){
+                        attron(COLOR_PAIR(12));
+                        mvprintw(3,3,"Wrong password!                                ");
+                        attroff(COLOR_PAIR(12));
+                    }
+                    else if(password_counter==2){
+                        attron(COLOR_PAIR(13));
+                        mvprintw(3,3,"Wrong password!                                ");
+                        attroff(COLOR_PAIR(13));
+                    }
+                    else if(password_counter==3){
+                        attron(COLOR_PAIR(14));
+                        mvprintw(3,3,"Wrong password! Door locked forever!!                          ");
+                        attroff(COLOR_PAIR(14));
+                    }
+                }
+
+
+                password_counter++;
             }
-            else {
-                mvprintw(5,3,"The door is locked. Press L to enter the pass !");
-            }
-            if(c=='l' && password_counter<=3){
-                status=code(password);
-            }
-            if(status==1 && password_counter<=3 ){
+            else if(no_lock==1){
                 locked[cordinate_locked[0]][cordinate_locked[1]]=2;
                 mvprintw(5,3,"The door is unlocked !                                       ");
                 mvprintw(4,3,"                                                            ");
+            }
 
-            }
-            else if(status==0 && password_counter<=3){
-                if(password_counter==1){
-                    attron(COLOR_PAIR(12));
-                  mvprintw(5,3,"Wrong password!                                ");
-                    attroff(COLOR_PAIR(12));
-                }
-                else if(password_counter==2){
-                    attron(COLOR_PAIR(13));
-                  mvprintw(5,3,"Wrong password!                                ");
-                    attroff(COLOR_PAIR(13));
-                }
-                else if(password_counter==3){
-                    attron(COLOR_PAIR(14));
-                  mvprintw(5,3,"Wrong password! Door locked forever!!                          ");
-                    attroff(COLOR_PAIR(14));
-                }
-            }
-            password_counter++;
 
         }
         if(counter==40){
@@ -3836,6 +3938,17 @@ int easy_game_f4(struct user *current_user) {
     }
 
 
+    int no_lock=0;
+    while(1){
+        int y6=rand()%max_y;
+        int x6=rand()%max_x;
+        if(map[y6][x6]=='.' ){
+            map[y6][x6]='/';
+            break;
+        }
+    }
+
+
 
     ////////////////
 
@@ -3940,6 +4053,11 @@ int easy_game_f4(struct user *current_user) {
                     else if(map[i][j]=='='){
                         mvprintw(i, j, "%lc", (wint_t)0x23F9);
                     }
+                    else if(map[i][j]=='/'){
+                        attron(COLOR_PAIR(6));
+                        mvprintw(i, j, "%lc", (wint_t)0x25B3);
+                        attroff(COLOR_PAIR(6));
+                    }
                     else {
                         mvaddch(i, j, map[i][j]);
 
@@ -3974,7 +4092,12 @@ int easy_game_f4(struct user *current_user) {
         if( (map[new_y][new_x] == '+' && (locked[new_y][new_x]==0 || locked[new_y][new_x]==2)) || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '.' ||
             map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
             map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
-            map[new_y][new_x] == '5' || map[new_y][new_x]=='=') {
+            map[new_y][new_x] == '5' || map[new_y][new_x]=='=' || map[new_y][new_x]=='/') {
+
+            if(map[new_y][new_x]=='/'){
+                mvprintw(2,3,"You found an Ancient Key !              ");
+                no_lock=1;
+            }
 
             if(map[new_y][new_x]=='=' && password_counter<=3){
                 char arrpass[]="0123456789";
@@ -3982,7 +4105,7 @@ int easy_game_f4(struct user *current_user) {
                     int temp=rand() % 9;
                     password[i9]=arrpass[temp];
                 }
-                mvprintw(4,3,"Password is %s                                          ",password);
+                mvprintw(3,3,"Password is %s                                          ",password);
 
             }
 
@@ -4070,46 +4193,56 @@ int easy_game_f4(struct user *current_user) {
 
         mvprintw(5,3,"                                                                ");
 
-        if( locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
-          new_y-1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
-          new_y==cordinate_locked[0] && new_x+1==cordinate_locked[1] ||
-          new_y==cordinate_locked[0] && new_x-1==cordinate_locked[1] )){
+
+        if(locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+                                                                   new_y-1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+                                                                   new_y==cordinate_locked[0] && new_x+1==cordinate_locked[1] ||
+                                                                   new_y==cordinate_locked[0] && new_x-1==cordinate_locked[1] )){
             mvprintw(4,3,"                                                               ",password);
-            if(password_counter>3){
-                attron(COLOR_PAIR(14));
-              mvprintw(5,3,"The door has been locked forever!!                   ");
-                attroff(COLOR_PAIR(14));
+            if (no_lock==0){
+                if(password_counter>3){
+                    attron(COLOR_PAIR(14));
+                    mvprintw(3,3,"The door has been locked forever!!                   ");
+                    attroff(COLOR_PAIR(14));
+                }
+                else {
+                    mvprintw(3,3,"The door is locked. Press L to enter the pass !");
+                }
+                if(c=='l' && password_counter<=3){
+                    status=code(password);
+                }
+                if(status==1 && password_counter<=3 ){
+                    locked[cordinate_locked[0]][cordinate_locked[1]]=2;
+                    mvprintw(3,3,"The door is unlocked !                                       ");
+
+                }
+                else if(status==0 && password_counter<=3){
+                    if(password_counter==1){
+                        attron(COLOR_PAIR(12));
+                        mvprintw(3,3,"Wrong password!                                ");
+                        attroff(COLOR_PAIR(12));
+                    }
+                    else if(password_counter==2){
+                        attron(COLOR_PAIR(13));
+                        mvprintw(3,3,"Wrong password!                                ");
+                        attroff(COLOR_PAIR(13));
+                    }
+                    else if(password_counter==3){
+                        attron(COLOR_PAIR(14));
+                        mvprintw(3,3,"Wrong password! Door locked forever!!                          ");
+                        attroff(COLOR_PAIR(14));
+                    }
+                }
+
+
+                password_counter++;
             }
-            else {
-                mvprintw(5,3,"The door is locked. Press L to enter the pass !");
-            }
-            if(c=='l' && password_counter<=3){
-                status=code(password);
-            }
-            if(status==1 && password_counter<=3 ){
+            else if(no_lock==1){
                 locked[cordinate_locked[0]][cordinate_locked[1]]=2;
                 mvprintw(5,3,"The door is unlocked !                                       ");
                 mvprintw(4,3,"                                                            ");
+            }
 
-            }
-            else if(status==0 && password_counter<=3){
-                if(password_counter==1){
-                    attron(COLOR_PAIR(12));
-                  mvprintw(5,3,"Wrong password!                                ");
-                    attroff(COLOR_PAIR(12));
-                }
-                else if(password_counter==2){
-                    attron(COLOR_PAIR(13));
-                  mvprintw(5,3,"Wrong password!                                ");
-                    attroff(COLOR_PAIR(13));
-                }
-                else if(password_counter==3){
-                    attron(COLOR_PAIR(14));
-                  mvprintw(5,3,"Wrong password! Door locked forever!!                          ");
-                    attroff(COLOR_PAIR(14));
-                }
-            }
-            password_counter++;
 
         }
         if(counter==40){
