@@ -86,7 +86,8 @@ int easy_game_f3(struct user *current_user);
 int easy_game_f4(struct user *current_user);
 int food_bar(int* food1, int* health , int* food);
 int weapon(struct user *current_user);
-int lose();
+int pre_leaderboard(struct user *current_user);
+int lose(struct user *current_user);
 int victory(struct user *current_user);
 
 
@@ -111,7 +112,7 @@ int main() {
             if (current_user.game_setting.game_level == 0) {
                 int result_game = easy_game(&current_user);
                 if (result_game == 0) {
-                    if(lose()==1){
+                    if(lose(&current_user)==1){
                         repeat = 0;
                     }
                     else {
@@ -327,6 +328,7 @@ int new_user(char *username) {
     start_color();
     curs_set(1);
     init_pair(1, COLOR_WHITE, COLOR_BLACK);
+    srand(time(NULL));
     int max_y, max_x;
     getmaxyx(stdscr, max_y, max_x);
     int center_y = max_y / 2 - 7;
@@ -372,7 +374,7 @@ int new_user(char *username) {
         while (fgets(tempi, 100, fptr) != NULL) {
             sscanf(tempi, "%s %s %s", temp_username, temp_password, temp_email);
             if (strcmp(temp_username, username) == 0) {
-                mvprintw(center_y + 12, center_x + 9, "This username is taken! ");
+                mvprintw(center_y + 12, center_x + 9, "This username is taken!                         ");
                 refresh();
                 move(center_y + 4, center_x + 12);
                 clrtoeol();
@@ -380,8 +382,6 @@ int new_user(char *username) {
                 break;
             }
         }
-        move(center_y + 12, center_x + 9);
-        clrtoeol();
         refresh();
 
         if (temp == 0) {
@@ -412,7 +412,7 @@ int new_user(char *username) {
             int lenii = strlen(chars);
             char temp_pass[100];
             for (int i = 0; i < random_num; i++) {
-                int temp = rand() % lenii;
+                int temp =  rand() % lenii;
                 temp_pass[i] = chars[temp];
             }
             mvprintw(center_y + 14, center_x + 9, "your random password is <  %s  >                                                              ", temp_pass);
@@ -503,7 +503,6 @@ int game_menu(char *username){
     refresh();
     return 0;
 }
-
 int leaderboard(struct user *current_user) {
     initscr();
     keypad(stdscr, TRUE);
@@ -515,8 +514,8 @@ int leaderboard(struct user *current_user) {
 
     int max_y, max_x;
     getmaxyx(stdscr, max_y, max_x);
-    int center_y = max_y / 2 -10;
-    int center_x = max_x / 2 -40;
+    int center_y = max_y / 2 - 10;
+    int center_x = max_x / 2 - 40;
 
     const int COL_WIDTH = 15;
     mvprintw(center_y, center_x + 25, "=== LEADERBOARD ===");
@@ -526,11 +525,61 @@ int leaderboard(struct user *current_user) {
 
     FILE* fptr = fopen("leaderboard.txt", "r");
     if (fptr == NULL) {
-        mvprintw(center_y + 5, center_x, "No leaderboard data available!");
+        // ایجاد فایل جدید
+        fptr = fopen("leaderboard.txt", "w");
+        if (fptr == NULL) {
+            mvprintw(center_y + 5, center_x, "Error creating leaderboard file!");
+            refresh();
+            getch();
+            return 0;
+        }
+        fclose(fptr);
+
+        // اضافه کردن کاربر جدید به لیدربورد
+        time_t current_time;
+        struct tm* time_info;
+        char join_date[20];
+
+        time(&current_time);
+        time_info = localtime(&current_time);
+        strftime(join_date, sizeof(join_date), "%Y-%m-%d/%H:%M", time_info);
+
+        current_user->rank = 1;
+        current_user->total_score = 0;
+        current_user->total_gold = 0;
+        current_user->total_finished_games = 0;
+        strcpy(current_user->joined_date, join_date);
+
+        FILE* fptr_write = fopen("leaderboard.txt", "w");
+        fprintf(fptr_write, "%d %s %d %d %d %s\n",
+                current_user->rank,
+                current_user->username,
+                current_user->total_score,
+                current_user->total_gold,
+                current_user->total_finished_games,
+                current_user->joined_date);
+        fclose(fptr_write);
+
+        attron(A_BOLD | A_BLINK);
+        mvprintw(center_y + 4, center_x, "%-10d %-15s %-15d %-15d %-15d %-20s",
+                 current_user->rank,
+                 current_user->username,
+                 current_user->total_score,
+                 current_user->total_gold,
+                 current_user->total_finished_games,
+                 current_user->joined_date);
+        attroff(A_BOLD | A_BLINK);
+
+        attron(A_BOLD | COLOR_PAIR(2));
+        mvprintw(center_y + 30, center_x, "New player added to leaderboard!");
+        attroff(A_BOLD | COLOR_PAIR(2));
+
+        mvprintw(center_y + 30, center_x+10, "[ Press enter to start the game ]");
         refresh();
         getch();
         return 0;
     }
+
     init_pair(1, COLOR_WHITE, COLOR_BLACK);
 
     int found = 0;
@@ -541,8 +590,9 @@ int leaderboard(struct user *current_user) {
     int total_finished_games;
     char total_time[100];
     char tempi[100];
-    int k =0;
+    int k = 0;
     rewind(fptr);
+
     while (fgets(tempi, 100, fptr) != NULL) {
         sscanf(tempi, "%d %s %d %d %d %s", &rank, username1, &total_score, &total_gold, &total_finished_games, total_time);
         if (strcmp(username1, current_user->username) == 0) {
@@ -551,19 +601,17 @@ int leaderboard(struct user *current_user) {
             current_user->total_gold = total_gold;
             strcpy(current_user->joined_date, total_time);
             current_user->total_finished_games = total_finished_games;
-            attron( A_BOLD | A_BLINK);
-            mvprintw(center_y + 4 + k, center_x, "%-10d %-15s %-15d %-15d %-15d %-20s" ,
+            attron(A_BOLD | A_BLINK);
+            mvprintw(center_y + 4 + k, center_x, "%-10d %-15s %-15d %-15d %-15d %-20s",
                      rank,
                      current_user->username,
                      current_user->total_score,
                      current_user->total_gold,
                      current_user->total_finished_games,
                      current_user->joined_date);
-            attroff( A_BOLD | A_BLINK);
-        }
-
-        else{
-            mvprintw(center_y + 4 + k, center_x, "%-10d %-15s %-15d %-15d %-15d %-20s" ,
+            attroff(A_BOLD | A_BLINK);
+        } else {
+            mvprintw(center_y + 4 + k, center_x, "%-10d %-15s %-15d %-15d %-15d %-20s",
                      rank,
                      username1,
                      total_score,
@@ -574,47 +622,44 @@ int leaderboard(struct user *current_user) {
         k++;
     }
 
+    if (!found) {
+        fclose(fptr);
+        time_t current_time;
+        struct tm* time_info;
+        char join_date[20];
 
-        if (!found) {
-            fclose(fptr);
-            time_t current_time;
-            struct tm* time_info;
-            char join_date[20];
+        time(&current_time);
+        time_info = localtime(&current_time);
+        strftime(join_date, sizeof(join_date), "%Y-%m-%d/%H:%M", time_info);
 
-            time(&current_time);
-            time_info = localtime(&current_time);
+        fptr = fopen("leaderboard.txt", "a");
+        current_user->rank = k;
+        current_user->total_score = 0;
+        current_user->total_gold = 0;
+        current_user->total_finished_games = 0;
+        strcpy(current_user->joined_date, join_date);
+        fprintf(fptr, "%d %s %d %d %d %s\n",
+                current_user->rank,
+                current_user->username,
+                current_user->total_score,
+                current_user->total_gold,
+                current_user->total_finished_games,
+                current_user->joined_date);
 
-            strftime(join_date, sizeof(join_date), "%Y-%m-%d/%H:%M", time_info);
+        attron(A_BOLD | A_BLINK);
+        mvprintw(center_y + 4 + k, center_x, "%-10d %-15s %-15d %-15d %-15d %-20s",
+                 current_user->rank,
+                 current_user->username,
+                 current_user->total_score,
+                 current_user->total_gold,
+                 current_user->total_finished_games,
+                 current_user->joined_date);
+        attroff(A_BOLD | A_BLINK);
 
-            fptr = fopen("leaderboard.txt", "a");
-            current_user->rank=k;
-            current_user->total_score=0;
-            current_user->total_gold=0;
-            current_user->total_finished_games=0;
-            strcpy(current_user->joined_date,join_date);
-            fprintf(fptr, "%d %s %d %d %d %s\n",
-                    current_user->rank,
-                    current_user->username,
-                    current_user->total_score,
-                    current_user->total_gold,
-                    current_user->total_finished_games,
-                    current_user->joined_date);
-
-            attron( A_BOLD | A_BLINK);
-            mvprintw(center_y + 4 + k, center_x, "%-10d %-15s %-15d %-15d %-15d %-20s",
-                     current_user->rank,
-                     current_user->username,
-                     current_user->total_score,
-                     current_user->total_gold,
-                     current_user->total_finished_games,
-                     current_user->joined_date);
-            attroff(A_BOLD | A_BLINK);
-
-            attron(A_BOLD | COLOR_PAIR(2));
-            mvprintw(center_y + 30, center_x, "New player added to leaderboard!");
-            attroff(A_BOLD | COLOR_PAIR(2));
-        }
-
+        attron(A_BOLD | COLOR_PAIR(2));
+        mvprintw(center_y + 30, center_x, "New player added to leaderboard!");
+        attroff(A_BOLD | COLOR_PAIR(2));
+    }
 
     fclose(fptr);
     mvprintw(center_y + 30, center_x+10, "[ Press enter to start the game ]");
@@ -1560,7 +1605,7 @@ int easy_game(struct user *current_user) {
            map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
            map[new_y][new_x] == '5' || map[new_y][new_x]=='=') {
 
-            if(map[new_y][new_x]=='='){
+            if(map[new_y][new_x]=='=' && password_counter<=3){
                 char arrpass[]="0123456789";
                 for(int i9=0;i9<4;i9++){
                     int temp=rand() % 9;
@@ -1645,26 +1690,54 @@ int easy_game(struct user *current_user) {
 
         //door code
         int status=2;
+        init_pair(12,COLOR_YELLOW,COLOR_BLACK);
+        init_pair(13,COLOR_MAGENTA,COLOR_BLACK);
+        init_pair(14,COLOR_RED,COLOR_BLACK);
 
-        if(password_counter<5 && locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+
+
+        mvprintw(5,3,"                                                                ");
+
+        if( locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
           new_y-1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
           new_y==cordinate_locked[0] && new_x+1==cordinate_locked[1] ||
           new_y==cordinate_locked[0] && new_x-1==cordinate_locked[1] )){
-
-            mvprintw(5,3,"The door is locked. Press L to enter the pass !");
-            if(c=='l'){
+            mvprintw(4,3,"                                                               ",password);
+            if(password_counter>3){
+                attron(COLOR_PAIR(14));
+              mvprintw(5,3,"The door has been locked forever!!                   ");
+                attroff(COLOR_PAIR(14));
+            }
+            else {
+                mvprintw(5,3,"The door is locked. Press L to enter the pass !");
+            }
+            if(c=='l' && password_counter<=3){
                 status=code(password);
             }
-            if(status==1){
+            if(status==1 && password_counter<=3 ){
                 locked[cordinate_locked[0]][cordinate_locked[1]]=2;
-                mvprintw(5,3,"The door is unlocked !                         ");
+                mvprintw(5,3,"The door is unlocked !                                       ");
                 mvprintw(4,3,"                                                            ");
 
             }
-            else if(status==0){
-                mvprintw(5,3,"Wrong password!                                ");
-                password_counter++;
+            else if(status==0 && password_counter<=3){
+                if(password_counter==1){
+                    attron(COLOR_PAIR(12));
+                  mvprintw(5,3,"Wrong password!                                ");
+                    attroff(COLOR_PAIR(12));
+                }
+                else if(password_counter==2){
+                    attron(COLOR_PAIR(13));
+                  mvprintw(5,3,"Wrong password!                                ");
+                    attroff(COLOR_PAIR(13));
+                }
+                else if(password_counter==3){
+                    attron(COLOR_PAIR(14));
+                  mvprintw(5,3,"Wrong password! Door locked forever!!                          ");
+                    attroff(COLOR_PAIR(14));
+                }
             }
+            password_counter++;
 
         }
         if(counter==40){
@@ -1904,17 +1977,23 @@ int easy_game_f2(struct user *current_user) {
                     char left = map[y1][current_x - 1];
                     char right = map[y1][current_x + 1];
 
-                    if ((left == '_' && right == '#') ||
-                        (left == '#' && right == '_') ) {
+
+                    if(left == '_' && right == '#'){
                         map[y1][current_x] = '+';
-                        map[y1][current_x+1] = '+';
                         map[y1][current_x-1] = '+';
                     }
+
+                    else if(left == '#' && right == '_'){
+                        map[y1][current_x] = '+';
+                        map[y1][current_x+1] = '+';
+                    }
+
                 }
 
                 else if (map[y1][current_x] == ' ') {
                     map[y1][current_x] = '#';
                     cori_number[y1][current_x]=num+1;
+
                 }
             }
 
@@ -1940,12 +2019,10 @@ int easy_game_f2(struct user *current_user) {
                     else if(down == '#' && up == '|'){
                         map[current_y][x2] = '+';
                         map[current_y-1][x2] = '+';
-                        map[current_y+1][x2] = '+';
                     }
                     else if(down == '|' && up == '#'){
                         map[current_y][x2] = '+';
                         map[current_y+1][x2] = '+';
-                        map[current_y-1][x2] = '+';
                     }
 
                 }
@@ -2304,7 +2381,7 @@ int easy_game_f2(struct user *current_user) {
             map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
             map[new_y][new_x] == '5' || map[new_y][new_x]=='=') {
 
-            if(map[new_y][new_x]=='='){
+            if(map[new_y][new_x]=='=' && password_counter<=3){
                 char arrpass[]="0123456789";
                 for(int i9=0;i9<4;i9++){
                     int temp=rand() % 9;
@@ -2390,32 +2467,59 @@ int easy_game_f2(struct user *current_user) {
 
         //door code
         int status=2;
+        init_pair(12,COLOR_YELLOW,COLOR_BLACK);
+        init_pair(13,COLOR_MAGENTA,COLOR_BLACK);
+        init_pair(14,COLOR_RED,COLOR_BLACK);
 
-        if(password_counter<5 && locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
-                                                                                         new_y-1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
-                                                                                         new_y==cordinate_locked[0] && new_x+1==cordinate_locked[1] ||
-                                                                                         new_y==cordinate_locked[0] && new_x-1==cordinate_locked[1] )){
 
-            mvprintw(5,3,"The door is locked. Press L to enter the pass !");
-            if(c=='l'){
+
+        mvprintw(5,3,"                                                                ");
+
+        if( locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+          new_y-1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+          new_y==cordinate_locked[0] && new_x+1==cordinate_locked[1] ||
+          new_y==cordinate_locked[0] && new_x-1==cordinate_locked[1] )){
+            mvprintw(4,3,"                                                               ",password);
+            if(password_counter>3){
+                attron(COLOR_PAIR(14));
+              mvprintw(5,3,"The door has been locked forever!!                   ");
+                attroff(COLOR_PAIR(14));
+            }
+            else {
+                mvprintw(5,3,"The door is locked. Press L to enter the pass !");
+            }
+            if(c=='l' && password_counter<=3){
                 status=code(password);
             }
-            if(status==1){
+            if(status==1 && password_counter<=3 ){
                 locked[cordinate_locked[0]][cordinate_locked[1]]=2;
-                mvprintw(5,3,"The door is unlocked !                         ");
+                mvprintw(5,3,"The door is unlocked !                                       ");
                 mvprintw(4,3,"                                                            ");
 
             }
-            else if(status==0){
-                mvprintw(5,3,"Wrong password!                                ");
-                password_counter++;
+            else if(status==0 && password_counter<=3){
+                if(password_counter==1){
+                    attron(COLOR_PAIR(12));
+                  mvprintw(5,3,"Wrong password!                                ");
+                    attroff(COLOR_PAIR(12));
+                }
+                else if(password_counter==2){
+                    attron(COLOR_PAIR(13));
+                  mvprintw(5,3,"Wrong password!                                ");
+                    attroff(COLOR_PAIR(13));
+                }
+                else if(password_counter==3){
+                    attron(COLOR_PAIR(14));
+                  mvprintw(5,3,"Wrong password! Door locked forever!!                          ");
+                    attroff(COLOR_PAIR(14));
+                }
             }
+            password_counter++;
 
         }
         if(counter==40){
             strcpy(password,"0");
         }
-
 
 
         //health
@@ -2641,17 +2745,23 @@ int easy_game_f3(struct user *current_user) {
                     char left = map[y1][current_x - 1];
                     char right = map[y1][current_x + 1];
 
-                    if ((left == '_' && right == '#') ||
-                        (left == '#' && right == '_') ) {
+
+                    if(left == '_' && right == '#'){
                         map[y1][current_x] = '+';
-                        map[y1][current_x+1] = '+';
                         map[y1][current_x-1] = '+';
                     }
+
+                    else if(left == '#' && right == '_'){
+                        map[y1][current_x] = '+';
+                        map[y1][current_x+1] = '+';
+                    }
+
                 }
 
                 else if (map[y1][current_x] == ' ') {
                     map[y1][current_x] = '#';
                     cori_number[y1][current_x]=num+1;
+
                 }
             }
 
@@ -2677,12 +2787,10 @@ int easy_game_f3(struct user *current_user) {
                     else if(down == '#' && up == '|'){
                         map[current_y][x2] = '+';
                         map[current_y-1][x2] = '+';
-                        map[current_y+1][x2] = '+';
                     }
                     else if(down == '|' && up == '#'){
                         map[current_y][x2] = '+';
                         map[current_y+1][x2] = '+';
-                        map[current_y-1][x2] = '+';
                     }
 
                 }
@@ -3044,7 +3152,7 @@ int easy_game_f3(struct user *current_user) {
             map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
             map[new_y][new_x] == '5' || map[new_y][new_x]=='=') {
 
-            if(map[new_y][new_x]=='='){
+            if(map[new_y][new_x]=='='&& password_counter<=3){
                 char arrpass[]="0123456789";
                 for(int i9=0;i9<4;i9++){
                     int temp=rand() % 9;
@@ -3130,34 +3238,59 @@ int easy_game_f3(struct user *current_user) {
 
         //door code
         int status=2;
+        init_pair(12,COLOR_YELLOW,COLOR_BLACK);
+        init_pair(13,COLOR_MAGENTA,COLOR_BLACK);
+        init_pair(14,COLOR_RED,COLOR_BLACK);
 
-        if(password_counter<5 && locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
-                                                                                         new_y-1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
-                                                                                         new_y==cordinate_locked[0] && new_x+1==cordinate_locked[1] ||
-                                                                                         new_y==cordinate_locked[0] && new_x-1==cordinate_locked[1] )){
 
-            mvprintw(5,3,"The door is locked. Press L to enter the pass !");
-            if(c=='l'){
+
+        mvprintw(5,3,"                                                                ");
+
+        if( locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+          new_y-1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+          new_y==cordinate_locked[0] && new_x+1==cordinate_locked[1] ||
+          new_y==cordinate_locked[0] && new_x-1==cordinate_locked[1] )){
+            mvprintw(4,3,"                                                               ",password);
+            if(password_counter>3){
+                attron(COLOR_PAIR(14));
+              mvprintw(5,3,"The door has been locked forever!!                   ");
+                attroff(COLOR_PAIR(14));
+            }
+            else {
+                mvprintw(5,3,"The door is locked. Press L to enter the pass !");
+            }
+            if(c=='l' && password_counter<=3){
                 status=code(password);
             }
-            if(status==1){
+            if(status==1 && password_counter<=3 ){
                 locked[cordinate_locked[0]][cordinate_locked[1]]=2;
-                mvprintw(5,3,"The door is unlocked !                         ");
+                mvprintw(5,3,"The door is unlocked !                                       ");
                 mvprintw(4,3,"                                                            ");
 
             }
-            else if(status==0){
-                mvprintw(5,3,"Wrong password!                                ");
-                password_counter++;
+            else if(status==0 && password_counter<=3){
+                if(password_counter==1){
+                    attron(COLOR_PAIR(12));
+                  mvprintw(5,3,"Wrong password!                                ");
+                    attroff(COLOR_PAIR(12));
+                }
+                else if(password_counter==2){
+                    attron(COLOR_PAIR(13));
+                  mvprintw(5,3,"Wrong password!                                ");
+                    attroff(COLOR_PAIR(13));
+                }
+                else if(password_counter==3){
+                    attron(COLOR_PAIR(14));
+                  mvprintw(5,3,"Wrong password! Door locked forever!!                          ");
+                    attroff(COLOR_PAIR(14));
+                }
             }
+            password_counter++;
 
         }
         if(counter==40){
             strcpy(password,"0");
         }
-
-
-
         //health
         mvprintw(max_y-2,2,"health: ");
         refresh();
@@ -3401,17 +3534,23 @@ int easy_game_f4(struct user *current_user) {
                     char left = map[y1][current_x - 1];
                     char right = map[y1][current_x + 1];
 
-                    if ((left == '_' && right == '#') ||
-                        (left == '#' && right == '_') ) {
+
+                    if(left == '_' && right == '#'){
                         map[y1][current_x] = '+';
-                        map[y1][current_x+1] = '+';
                         map[y1][current_x-1] = '+';
                     }
+
+                    else if(left == '#' && right == '_'){
+                        map[y1][current_x] = '+';
+                        map[y1][current_x+1] = '+';
+                    }
+
                 }
 
                 else if (map[y1][current_x] == ' ') {
                     map[y1][current_x] = '#';
                     cori_number[y1][current_x]=num+1;
+
                 }
             }
 
@@ -3437,12 +3576,10 @@ int easy_game_f4(struct user *current_user) {
                     else if(down == '#' && up == '|'){
                         map[current_y][x2] = '+';
                         map[current_y-1][x2] = '+';
-                        map[current_y+1][x2] = '+';
                     }
                     else if(down == '|' && up == '#'){
                         map[current_y][x2] = '+';
                         map[current_y+1][x2] = '+';
-                        map[current_y-1][x2] = '+';
                     }
 
                 }
@@ -3839,7 +3976,7 @@ int easy_game_f4(struct user *current_user) {
             map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
             map[new_y][new_x] == '5' || map[new_y][new_x]=='=') {
 
-            if(map[new_y][new_x]=='='){
+            if(map[new_y][new_x]=='=' && password_counter<=3){
                 char arrpass[]="0123456789";
                 for(int i9=0;i9<4;i9++){
                     int temp=rand() % 9;
@@ -3925,32 +4062,59 @@ int easy_game_f4(struct user *current_user) {
 
         //door code
         int status=2;
+        init_pair(12,COLOR_YELLOW,COLOR_BLACK);
+        init_pair(13,COLOR_MAGENTA,COLOR_BLACK);
+        init_pair(14,COLOR_RED,COLOR_BLACK);
 
-        if(password_counter<5 && locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
-                                                                                         new_y-1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
-                                                                                         new_y==cordinate_locked[0] && new_x+1==cordinate_locked[1] ||
-                                                                                         new_y==cordinate_locked[0] && new_x-1==cordinate_locked[1] )){
 
-            mvprintw(5,3,"The door is locked. Press L to enter the pass !");
-            if(c=='l'){
+
+        mvprintw(5,3,"                                                                ");
+
+        if( locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+          new_y-1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
+          new_y==cordinate_locked[0] && new_x+1==cordinate_locked[1] ||
+          new_y==cordinate_locked[0] && new_x-1==cordinate_locked[1] )){
+            mvprintw(4,3,"                                                               ",password);
+            if(password_counter>3){
+                attron(COLOR_PAIR(14));
+              mvprintw(5,3,"The door has been locked forever!!                   ");
+                attroff(COLOR_PAIR(14));
+            }
+            else {
+                mvprintw(5,3,"The door is locked. Press L to enter the pass !");
+            }
+            if(c=='l' && password_counter<=3){
                 status=code(password);
             }
-            if(status==1){
+            if(status==1 && password_counter<=3 ){
                 locked[cordinate_locked[0]][cordinate_locked[1]]=2;
-                mvprintw(5,3,"The door is unlocked !                         ");
+                mvprintw(5,3,"The door is unlocked !                                       ");
                 mvprintw(4,3,"                                                            ");
 
             }
-            else if(status==0){
-                mvprintw(5,3,"Wrong password!                                ");
-                password_counter++;
+            else if(status==0 && password_counter<=3){
+                if(password_counter==1){
+                    attron(COLOR_PAIR(12));
+                  mvprintw(5,3,"Wrong password!                                ");
+                    attroff(COLOR_PAIR(12));
+                }
+                else if(password_counter==2){
+                    attron(COLOR_PAIR(13));
+                  mvprintw(5,3,"Wrong password!                                ");
+                    attroff(COLOR_PAIR(13));
+                }
+                else if(password_counter==3){
+                    attron(COLOR_PAIR(14));
+                  mvprintw(5,3,"Wrong password! Door locked forever!!                          ");
+                    attroff(COLOR_PAIR(14));
+                }
             }
+            password_counter++;
 
         }
         if(counter==40){
             strcpy(password,"0");
         }
-
 
         //health
         mvprintw(max_y-2,2,"health: ");
@@ -4024,6 +4188,7 @@ int easy_game_f4(struct user *current_user) {
             current_user->food1=food1;
             current_user->new_golds+=total_black_gold+total_yellow_gold;
             current_user->weapons.in_use_weapon=in_use_weapon;
+            current_user->total_gold+=current_user->new_golds;
             return 1;
         }
 
@@ -4031,6 +4196,99 @@ int easy_game_f4(struct user *current_user) {
 
     endwin();
 }
+
+int pre_leaderboard(struct user *current_user){
+     FILE* fptr = fopen("leaderboard.txt", "r");
+     FILE* fptrtemp = fopen("temp.txt", "w");
+
+    char info[100][100][100];
+    int info2[100][100];
+    int rank;
+    char username1[100];
+    int total_score;
+    int total_gold;
+    int total_finished_games;
+    char total_time[100];
+    char tempi[100];
+    int k =0;
+    rewind(fptr);
+
+    while (fgets(tempi, 100, fptr) != NULL) {
+        sscanf(tempi, "%d %s %d %d %d %s", &rank, username1, &total_score, &total_gold, &total_finished_games, total_time);
+        if (strcmp(username1, current_user->username) == 0) {
+            strcpy(info[k][0],username1);
+            info2[k][1]=current_user->total_score;
+            info2[k][2]=current_user->total_gold;
+            info2[k][3]=current_user->total_finished_games;
+            strcpy(info[k][1],total_time);
+        }
+        else{
+            strcpy(info[k][0],username1);
+            info2[k][1]=total_score;
+            info2[k][2]=total_gold;
+            info2[k][3]=total_finished_games;
+            strcpy(info[k][1],total_time);
+        }
+
+        k++;
+    }
+
+
+    for(int j = 0; j < k-1; j++) {
+        for(int p = 0; p < k-1-j; p++) {
+            if(info2[p][2] < info2[p+1][2]) {
+                int tempscore = info2[p][1];
+                int tempgold = info2[p][2];
+                int tempfinished = info2[p][3];
+                char tempusername[100];
+                char temptime[100];
+
+                strcpy(tempusername, info[p][0]);
+                strcpy(temptime, info[p][1]);
+
+                info2[p][1] = info2[p+1][1];
+                info2[p][2] = info2[p+1][2];
+                info2[p][3] = info2[p+1][3];
+
+                strcpy(info[p][0], info[p+1][0]);
+                strcpy(info[p][1], info[p+1][1]);
+
+                info2[p+1][1] = tempscore;
+                info2[p+1][2] = tempgold;
+                info2[p+1][3] = tempfinished;
+                strcpy(info[p+1][0], tempusername);
+                strcpy(info[p+1][1], temptime);
+            }
+        }
+    }
+
+     for(int i = 0; i < k; i++) {
+        fprintf(fptrtemp, "%d %s %d %d %d %s\n",
+            i+1,
+            info[i][0],
+            info2[i][1],
+            info2[i][2],
+            info2[i][3],
+            info[i][1]
+        );
+    }
+
+    fclose(fptr);
+    fclose(fptrtemp);
+
+    remove("leaderboard.txt");
+
+    rename("temp.txt", "leaderboard.txt");
+
+    return 0;
+
+
+
+
+}
+
+
+
 
 
 int victory(struct user *current_user){
@@ -4042,7 +4300,7 @@ int victory(struct user *current_user){
     cbreak();
     clear();
     start_color();
-    curs_set(1);
+    curs_set(0);
     init_pair(1, COLOR_WHITE, COLOR_BLACK);
     int max_y, max_x;
     getmaxyx(stdscr, max_y, max_x);
@@ -4059,39 +4317,19 @@ int victory(struct user *current_user){
         attroff(COLOR_PAIR(1) | A_BOLD | A_BLINK);
         mvprintw(center_y + 2, center_x-4, "══════════════════════════════");
         attroff(COLOR_PAIR(1) | A_BOLD);
-        mvprintw(center_y + 6, center_x-4, "Total received Golds: %d",current_user->total_gold+current_user->new_golds);
+        mvprintw(center_y + 6, center_x-4, "Total received Golds: %d",current_user->new_golds);
         mvprintw(center_y+20,center_x , selected == 0 ? "[ back to leaderboard ]" : "back to leaderboard");
         refresh();
         key = getch();
         current_user->total_finished_games+=1;
-        current_user->total_gold= current_user->total_gold+current_user->new_golds;
-
-        switch(key) {
-            case KEY_UP:
-                selected--;
-                if(selected < 0) {
-                    selected = 0;
-                }
-                break;
-            case KEY_DOWN:
-                selected++;
-                if(selected > 0) {
-                    selected = 0;
-                }
-                break;
-            case '\n':
-                clear();
-                if(selected == 0) {
-                    return 1;
-                }
-                refresh();
-                break;
-        }
+        pre_leaderboard(current_user);
+        getch();
+        return 1;
     }
     refresh();
 }
 
-int lose(){
+int lose(struct user *current_user){
     initscr();
     keypad(stdscr, TRUE);
     curs_set(0);
@@ -4100,7 +4338,7 @@ int lose(){
     cbreak();
     clear();
     start_color();
-    curs_set(1);
+    curs_set(0);
     init_pair(1, COLOR_WHITE, COLOR_BLACK);
     int max_y, max_x;
     getmaxyx(stdscr, max_y, max_x);
@@ -4138,10 +4376,12 @@ int lose(){
             case '\n':
                 clear();
                 if(selected == 0) {
+                    pre_leaderboard(current_user);
                     return 1;
                 }
                 else if(selected == 1) {
-                    return 0;
+                   pre_leaderboard(current_user);
+                   return 0;
                 }
                 refresh();
                 getch();
