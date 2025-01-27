@@ -1612,10 +1612,10 @@ int easy_game(struct user *current_user) {
                 continue;
             }
         }
-        if (c == KEY_UP && y > 0) new_y--;
-        if (c == KEY_DOWN && y < max_y - 1) new_y++;
-        if (c == KEY_RIGHT && x < max_x - 1) new_x++;
-        if (c == KEY_LEFT && x > 0) new_x--;
+        if (c == 'j' || c =='J' && y > 0) new_y--;
+        if (c == 'k' || c == 'K' && y < max_y - 1) new_y++;
+        if (c == 'l' || c == 'L' && x < max_x - 1) new_x++;
+        if (c == 'h' || c == 'H' && x > 0) new_x--;
 
         if( (map[new_y][new_x] == '+' && (locked[new_y][new_x]==0 || locked[new_y][new_x]==2)) || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '.' ||
            map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
@@ -2426,10 +2426,13 @@ int easy_game_f2(struct user *current_user) {
             }
             c = getch();
         }
-        if (c == KEY_UP && y > 0) new_y--;
-        if (c == KEY_DOWN && y < max_y - 1) new_y++;
-        if (c == KEY_RIGHT && x < max_x - 1) new_x++;
-        if (c == KEY_LEFT && x > 0) new_x--;
+
+        ///movement
+        if (c == 'j' || c =='J' && y > 0) new_y--;
+        if (c == 'k' || c == 'K' && y < max_y - 1) new_y++;
+        if (c == 'l' || c == 'L' && x < max_x - 1) new_x++;
+        if (c == 'h' || c == 'H' && x > 0) new_x--;
+        ///
 
         if( (map[new_y][new_x] == '+' && (locked[new_y][new_x]==0 || locked[new_y][new_x]==2)) || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '.' ||
             map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
@@ -3229,10 +3232,13 @@ int easy_game_f3(struct user *current_user) {
             }
             c = getch();
         }
-        if (c == KEY_UP && y > 0) new_y--;
-        if (c == KEY_DOWN && y < max_y - 1) new_y++;
-        if (c == KEY_RIGHT && x < max_x - 1) new_x++;
-        if (c == KEY_LEFT && x > 0) new_x--;
+        ///movement
+        if (c == 'j' || c =='J' && y > 0) new_y--;
+        if (c == 'k' || c == 'K' && y < max_y - 1) new_y++;
+        if (c == 'l' || c == 'L' && x < max_x - 1) new_x++;
+        if (c == 'h' || c == 'H' && x > 0) new_x--;
+        ///
+
 
         if( (map[new_y][new_x] == '+' && (locked[new_y][new_x]==0 || locked[new_y][new_x]==2)) || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '.' ||
             map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
@@ -4084,10 +4090,13 @@ int easy_game_f4(struct user *current_user) {
             }
             c = getch();
         }
-        if (c == KEY_UP && y > 0) new_y--;
-        if (c == KEY_DOWN && y < max_y - 1) new_y++;
-        if (c == KEY_RIGHT && x < max_x - 1) new_x++;
-        if (c == KEY_LEFT && x > 0) new_x--;
+        ///movement
+        if (c == 'j' || c =='J' && y > 0) new_y--;
+        if (c == 'k' || c == 'K' && y < max_y - 1) new_y++;
+        if (c == 'l' || c == 'L' && x < max_x - 1) new_x++;
+        if (c == 'h' || c == 'H' && x > 0) new_x--;
+        ///
+
 
         if( (map[new_y][new_x] == '+' && (locked[new_y][new_x]==0 || locked[new_y][new_x]==2)) || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '.' ||
             map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
