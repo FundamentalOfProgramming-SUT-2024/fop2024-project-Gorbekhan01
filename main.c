@@ -82,8 +82,12 @@ typedef struct weapons{
 
 typedef struct spell{
     int health_spell;
+    int health_spell_counter;
     int speed_spell;
+    int speed_spell_counter;
     int damage_spell;
+    int damage_spell_counter;
+
 }spells;
 
 typedef struct game{
@@ -91,6 +95,7 @@ typedef struct game{
    int music;
    int game_level;
    int player_color;
+   int snake_chasing;
 }game;
 
 typedef struct user{
@@ -953,9 +958,9 @@ int weapon(struct user *current_user) {
         int k = 0;
 
         mvprintw(center_y-4, center_x, ">>>> W E A P O N S <<<<");
-        mvprintw(center_y+20, center_x, "-- Use KEY UP & KEY DOWN to choose Weapon --");
-        mvprintw(center_y+22, center_x, "-- Press ENTER to use! --");
-        mvprintw(center_y+24, center_x, "-- Press Q to exit --");
+        mvprintw(center_y+22, center_x, "-- Use KEY UP & KEY DOWN to choose Weapon --");
+        mvprintw(center_y+24, center_x, "-- Press < ENTER > to use! --");
+        mvprintw(center_y+26, center_x, "-- Press < Q > to exit --");
 
 
         mvprintw(center_y+2, center_x,"-- Short range weapons -----------");
@@ -1096,6 +1101,98 @@ int code(char password[]){
 
 
 }
+int spell(struct user *current_user){
+    initscr();
+    keypad(stdscr, TRUE);
+    refresh();
+    noecho();
+    cbreak();
+    clear();
+    start_color();
+    curs_set(0);
+    int max_y, max_x;
+    getmaxyx(stdscr, max_y, max_x);
+    int center_y = max_y / 2 - 7;
+    int center_x = max_x / 2 - 15;
+    int selected =0;
+    int key;
+    init_pair(1,COLOR_RED,COLOR_BLACK);
+    init_pair(2,COLOR_YELLOW,COLOR_BLACK);
+    init_pair(3,COLOR_GREEN,COLOR_BLACK);
+
+    while(1) {
+        mvprintw(center_y-4,center_x-4,"** S P E L L S ***************************");
+
+        mvprintw(center_y, center_x, selected == 0 ? "> Health Spell   count: %d" : "  Health Spell   count: %d",current_user->spells.health_spell);
+        attron(COLOR_PAIR(1));
+        mvprintw(center_y,center_x-2, "%lc", (wint_t)0x2295);
+        attroff(COLOR_PAIR(1));
+
+        mvprintw(center_y+2, center_x, selected == 1 ? "> Speed Spell   count: %d" : "  Speed Spell   count: %d",current_user->spells.speed_spell);
+        attron(COLOR_PAIR(2));
+        mvprintw(center_y+2,center_x-2, "%lc", (wint_t)0x27A4);
+        attroff(COLOR_PAIR(2));
+
+        mvprintw(center_y+4, center_x, selected == 2 ? "> Damage Spell   count: %d" : "  Damage Spell   count: %d",current_user->spells.damage_spell);
+        attron(COLOR_PAIR(3));
+        mvprintw(center_y+4,center_x-2, "%lc", (wint_t)0x16ED);
+        attroff(COLOR_PAIR(3));
+
+        mvprintw(center_y+8, center_x-4, "************* ************* *************");
+
+        mvprintw(center_y+16, center_x, "-- Use KEY UP & KEY DOWN to choose food --");
+        mvprintw(center_y+18, center_x, "-- Press ENTER to eat! --");
+        mvprintw(center_y+20, center_x, "-- Press Q to exit --");
+        refresh();
+        key = getch();
+
+        switch(key) {
+            case 'q':
+                clear();
+                return 3;
+            case KEY_UP:
+                selected--;
+                if(selected < 0) {
+                    selected = 2;
+                }
+                break;
+            case KEY_DOWN:
+                selected++;
+                if(selected > 2) {
+                    selected = 0;
+                }
+                break;
+            case '\n':
+                refresh();
+                if(selected == 0) {
+                    current_user->spells.health_spell--;
+                    if(current_user->spells.health_spell<0){
+                        current_user->spells.health_spell=0;
+                    }
+                    current_user->spells.health_spell_counter=10;
+                }
+                if(selected == 1) {
+                    current_user->spells.speed_spell--;
+                    if(current_user->spells.speed_spell<0){
+                        current_user->spells.speed_spell=0;
+                    }
+                    current_user->spells.speed_spell_counter=10;
+                }
+                if(selected == 2) {
+                    current_user->spells.damage_spell--;
+                    if(current_user->spells.damage_spell<0){
+                        current_user->spells.damage_spell=0;
+                    }
+                    current_user->spells.damage_spell_counter=10;
+                }
+
+                refresh();
+                getch();
+                break;
+        }
+    }
+
+}
 
 
 int easy_game(struct user *current_user) {
@@ -1141,6 +1238,7 @@ int easy_game(struct user *current_user) {
     current_user->spells.damage_spell=0;
     current_user->spells.health_spell=0;
     current_user->spells.speed_spell=0;
+    current_user->game_setting.snake_chasing=0;
 
     int in_use_weapon=0;
 
@@ -1270,7 +1368,7 @@ int easy_game(struct user *current_user) {
                     counterrr++;
                     map[y1][current_x] = '#';
                     cori_number[y1][current_x]=num+1;
-                    if(counterrr%30==0){
+                    if(counterrr%34==0){
                         if(map[y1+1][current_x]==' '){
                             map[++y1][current_x]='#';
                             cori_number[y1][current_x]=num+1;
@@ -1581,6 +1679,8 @@ int easy_game(struct user *current_user) {
             counts++;
         }
     }
+
+
     ////////////////////////
 
 
@@ -1611,7 +1711,40 @@ int easy_game(struct user *current_user) {
 
 
 
+// speed spell
+    int x_speed_spell=0, y_speed_spell=0;
+    int countof= 1+  rand() % 2;
+    while (countof!=0){
+        x_speed_spell = rand() % max_x;
+        y_speed_spell = rand() % max_y;
+        if(map[y_speed_spell][x_speed_spell]=='.'){
+            map[y_speed_spell][x_speed_spell]='n'; //n stands for speed spell
+            countof--;
+        }
+    }
+    // health spell
+    int x_health_spell=0, y_health_spell=0;
+    countof= 1 + rand() % 2;
+    while (countof!=0){
+        x_health_spell = rand() % max_x;
+        y_health_spell = rand() % max_y;
+        if(map[y_health_spell][x_health_spell]=='.'){
+            map[y_health_spell][x_health_spell]='b'; //b stands for health spell
+            countof--;
+        }
+    }
 
+    //damage spell
+    int x_damage_spell=0, y_damage_spell=0;
+    countof= 1 + rand() % 2;
+    while (countof!=0){
+        x_damage_spell = rand() % max_x;
+        y_damage_spell = rand() % max_y;
+        if(map[y_damage_spell][x_damage_spell]=='.'){
+            map[y_damage_spell][x_damage_spell]='m'; //m stands for health spell
+            countof--;
+        }
+    }
 
 
 
@@ -1663,6 +1796,7 @@ int easy_game(struct user *current_user) {
         }
     }
     int food4health_counter=0;
+    int k=1;
 
     do {
         //print map
@@ -1742,6 +1876,22 @@ int easy_game(struct user *current_user) {
                         mvprintw(i, j, "%lc", (wint_t)0x25B3);
                         attroff(COLOR_PAIR(6));
                     }
+                    else if(map[i][j]=='b') { //health spell
+                        attron(COLOR_PAIR(10));
+                        mvprintw(i, j, "%lc", (wint_t)0x2295);
+                        attroff(COLOR_PAIR(10));
+                    }
+                    else if(map[i][j]=='n'){ //speed spell
+                        attron(COLOR_PAIR(6));
+                        mvprintw(i, j, "%lc", (wint_t)0x27A4);
+                        attroff(COLOR_PAIR(6));
+
+                    }
+                    else if(map[i][j]=='m'){ //damage spell
+                        attron(COLOR_PAIR(11));
+                        mvprintw(i, j, "%lc", (wint_t)0x16ED);
+                        attroff(COLOR_PAIR(11));
+                    }
                     else {
                         mvaddch(i, j, map[i][j]);
 
@@ -1750,6 +1900,7 @@ int easy_game(struct user *current_user) {
                 }
             }
         }
+
 
         int new_y = y;
         int new_x = x;
@@ -1771,18 +1922,55 @@ int easy_game(struct user *current_user) {
 //        if (c == 'l' || c == 'L' && x < max_x - 1) new_x++;
 //        if (c == 'h' || c == 'H' && x > 0) new_x--;
 
-        if (c == KEY_UP && y > 0) new_y--;
-        if (c == KEY_DOWN && y < max_y - 1) new_y++;
-        if (c == KEY_RIGHT && x < max_x - 1) new_x++;
-        if (c == KEY_LEFT && x > 0) new_x--;
+        if(current_user->spells.speed_spell_counter>0){
+            if (c == KEY_UP && y > 0) new_y-=2;
+            if (c == KEY_DOWN && y < max_y - 1) new_y+=2;
+            if (c == KEY_RIGHT && x < max_x - 1) new_x+=2;
+            if (c == KEY_LEFT && x > 0) new_x-=2;
+            current_user->spells.speed_spell_counter-=1;
+            if(current_user->spells.speed_spell_counter==0) current_user->spells.speed_spell_counter=0;
+        }
+        else{
+            if (c == KEY_UP && y > 0) new_y--;
+            if (c == KEY_DOWN && y < max_y - 1) new_y++;
+            if (c == KEY_RIGHT && x < max_x - 1) new_x++;
+            if (c == KEY_LEFT && x > 0) new_x--;
+
+        }
+
+        if(current_user->spells.damage_spell_counter>0){
+            k=2;
+            current_user->spells.damage_spell_counter-=1;
+            if (current_user->spells.damage_spell_counter<0) current_user->spells.damage_spell_counter=0;
+        } else {
+            k=1;
+        }
+
+
 
         if( (map[new_y][new_x] == '+' && (locked[new_y][new_x]==0 || locked[new_y][new_x]==2)) || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '.' ||
            map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
            map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
            map[new_y][new_x] == '5'  || map[new_y][new_x]=='=' || map[new_y][new_x]=='/' || map[new_y][new_x]=='z'||
-           map[new_y][new_x] == 'x'  || map[new_y][new_x] == 'c') {
+           map[new_y][new_x] == 'x'  || map[new_y][new_x] == 'c' || map[new_y][new_x] == 'b' || map[new_y][new_x] == 'n'||
+           map[new_y][new_x] == 'm') {
 
 
+            if(map[new_y][new_x]=='b'){
+                mvprintw(2,3,"You claimed a Health spell              ");
+                current_user->spells.health_spell++;
+            }
+
+            if(map[new_y][new_x]=='n'){
+                mvprintw(2,3,"You claimed a Speed spell              ");
+                current_user->spells.speed_spell++;
+
+            }
+
+            if(map[new_y][new_x]=='m'){
+                mvprintw(2,3,"You claimed a Damage spell              ");
+                current_user->spells.damage_spell++;
+            }
 
             if(map[new_y][new_x]=='/'){
                 mvprintw(2,3,"You found an Ancient Key !              ");
@@ -1883,6 +2071,11 @@ int easy_game(struct user *current_user) {
         mvprintw(max_y-2,max_x-10,"GOLD: %d",total_black_gold+total_yellow_gold);
 
 
+        if(c=='s'){
+            spell(current_user);
+        }
+
+
 
         //deamon ////////
 
@@ -1976,13 +2169,16 @@ int easy_game(struct user *current_user) {
 
         ////////////---------------------//
 
+
         draw_character(y, x, current_user->game_setting.player_color);
 
-        if(counter==30){
+
+        ///health
+        if(counter==40){
             health--;
             counter=0;
         }
-        if(counter==25){
+        if(counter==30){
             food--;
         }
         if(health==0){
@@ -1998,8 +2194,6 @@ int easy_game(struct user *current_user) {
         init_pair(14,COLOR_RED,COLOR_BLACK);
 
 
-
-        mvprintw(3,3,"                                                                ");
         int dx = xd - new_x;
         int dy = yd - new_y;
         fx = new_x_f -  new_x;
@@ -2011,58 +2205,61 @@ int easy_game(struct user *current_user) {
             if (in_use_weapon == 1) {
                 if ((abs(dy) == 1 || abs(dy) == -1 || abs(dy) == 0) &&
                     (abs(dx) == 1 || abs(dx) == -1 || abs(dx) == 0)) {
-                    deamon_health -= 5;
-                    mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
+                    deamon_health -= 5*k;
                     if (deamon_health <= 0) {
                         deamon_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
+
 
                 }
                 if ((abs(fy) == 1 || abs(fy) == -1 || abs(fy) == 0) &&
                     (abs(fx) == 1 || abs(fx) == -1 || abs(fx) == 0)) {
-                    fire_health -= 5;
-                    mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
+                    fire_health -= 5*k;
                     if (fire_health <= 0) {
                         fire_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
+
 
                 }
                 if ((abs(sy) == 1 || abs(sy) == -1 || abs(sy) == 0) &&
                     (abs(sx) == 1 || abs(sx) == -1 || abs(sx) == 0)) {
-                    snake_health -= 5;
-                    mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
+                    snake_health -= 5*k;
                     if (snake_health <= 0) {
                         snake_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
 
                 }
             }
             if(in_use_weapon==5){
                 if ((abs(dy) == 1 || abs(dy) == -1 || abs(dy) == 0) &&
                     (abs(dx) == 1 || abs(dx) == -1 || abs(dx) == 0)) {
-                    deamon_health -= 10;
-                    mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
+                    deamon_health -= 10*k;
                     if (deamon_health <= 0) {
                         deamon_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
 
                 }
                 if ((abs(fy) == 1 || abs(fy) == -1 || abs(fy) == 0) &&
                     (abs(fx) == 1 || abs(fx) == -1 || abs(fx) == 0)) {
-                    fire_health -= 10;
-                    mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
+                    fire_health -= 10*k;
                     if (fire_health <= 0) {
                         fire_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
+
 
                 }
                 if ((abs(sy) == 1 || abs(sy) == -1 || abs(sy) == 0) &&
                     (abs(sx) == 1 || abs(sx) == -1 || abs(sx) == 0)) {
-                    snake_health -= 10;
-                    mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
+                    snake_health -= 10*k;
                     if (snake_health <= 0) {
                         snake_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
 
                 }
             }
@@ -2094,19 +2291,19 @@ int easy_game(struct user *current_user) {
         if(start_dagger == 1 && counterfor2 > 0) {
 
             if(xfor2 == new_x_f && yfor2 == new_y_f) {
-                fire_health -= 10;
+                fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
                 counterfor2=0;
             }
             if(xfor2 == new_x_s && yfor2 == new_y_s) {
-                snake_health -= 10;
+                snake_health -= 10*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
                 counterfor2=0;
             }
             if(xfor2 == xd && yfor2 == yd) {
-                deamon_health -= 10;
+                deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
                 mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
                 counterfor2=0;
@@ -2124,7 +2321,7 @@ int easy_game(struct user *current_user) {
             }
             else if(ds==1) {
                 yfor2++;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='-'){
+                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
                     counterfor2=0;
                     if(map[yfor2-1][xfor2]=='.')
                     {
@@ -2134,7 +2331,7 @@ int easy_game(struct user *current_user) {
             }
             else if(dd==1) {
                 xfor2++;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='-'){
+                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
                     counterfor2=0;
                     if(map[yfor2][xfor2-1]=='.')
                     {
@@ -2144,7 +2341,7 @@ int easy_game(struct user *current_user) {
             }
             else if(dw==1) {
                 yfor2--;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='-'){
+                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
                     counterfor2=0;
                     if(map[yfor2+1][xfor2]=='.')
                     {
@@ -2197,19 +2394,19 @@ int easy_game(struct user *current_user) {
         if(start_normal_arrow == 1 && counterfor4 > 0) {
 
             if(xfor4 == new_x_f && yfor4 == new_y_f) {
-                fire_health -= 10;
+                fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
                 counterfor4=0;
             }
             if(xfor4 == new_x_s && yfor2 == new_y_s) {
-                snake_health -= 10;
+                snake_health -= 10*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
                 counterfor4=0;
             }
             if(xfor4 == xd && yfor4== yd) {
-                deamon_health -= 10;
+                deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
                 mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
                 counterfor4=0;
@@ -2217,7 +2414,7 @@ int easy_game(struct user *current_user) {
 
             if(na==1) {
                 xfor4--;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='-'){
+                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
                     counterfor4=0;
                     if(map[yfor4][xfor4+1]=='.')
                     {
@@ -2227,7 +2424,7 @@ int easy_game(struct user *current_user) {
             }
             else if(ns==1) {
                 yfor4++;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='-'){
+                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
                     counterfor4=0;
                     if(map[yfor4-1][xfor4]=='.')
                     {
@@ -2237,7 +2434,7 @@ int easy_game(struct user *current_user) {
             }
             else if(nd==1) {
                 xfor4++;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='-'){
+                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
                     counterfor4=0;
                     if(map[yfor4][xfor4-1]=='.')
                     {
@@ -2247,7 +2444,7 @@ int easy_game(struct user *current_user) {
             }
             else if(nw==1) {
                 yfor4--;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='-'){
+                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
                     counterfor4=0;
                     if(map[yfor4+1][xfor4]=='.')
                     {
@@ -2299,20 +2496,20 @@ int easy_game(struct user *current_user) {
         if(start_magic_wand == 1 && counterfor3 > 0) {
 
             if(xfor3 == new_x_f && yfor3 == new_y_f) {
-                fire_health -= 10;
+                fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
                 counterfor3=0;
             }
             if(xfor3 == new_x_s && yfor3 == new_y_s) {
-                snake_health -= 10;
+                snake_health -= 10*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
                 counterfor3=0;
                 snake_chase=0;
             }
             if(xfor3 == xd && yfor3 == yd) {
-                deamon_health -= 10;
+                deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
                 mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
                 counterfor3=0;
@@ -2434,7 +2631,14 @@ int easy_game(struct user *current_user) {
 
         if(food==10){
             if(food4health_counter==2){
-                health+=1;
+                if(current_user->spells.health_spell_counter>0){
+                    health+=2;
+                    current_user->spells.health_spell_counter-=1;
+                    if(current_user->spells.health_spell_counter<0) current_user->spells.health_spell_counter=0;
+                }
+                else{
+                    health+=1;
+                }
                 if(health>10) health=10;
                 food4health_counter=0;
             }
@@ -2512,6 +2716,9 @@ int easy_game(struct user *current_user) {
             current_user->food1=food1;
             current_user->new_golds=total_black_gold+total_yellow_gold;
             current_user->weapons.in_use_weapon=in_use_weapon;
+            if(snake_chase==1) {
+                current_user->game_setting.snake_chasing = 1;
+            }
             return easy_game_f2(current_user);
         }
 
@@ -2696,7 +2903,7 @@ int easy_game_f2(struct user *current_user) {
                     counterrr++;
                     map[y1][current_x] = '#';
                     cori_number[y1][current_x]=num+1;
-                    if(counterrr%30==0){
+                    if(counterrr%34==0){
                         if(map[y1+1][current_x]==' '){
                             map[++y1][current_x]='#';
                             cori_number[y1][current_x]=num+1;
@@ -2827,6 +3034,7 @@ int easy_game_f2(struct user *current_user) {
             stairs++;
         }
     }
+
     int y=y2;
     int x=x2;
 
@@ -2991,17 +3199,22 @@ int easy_game_f2(struct user *current_user) {
         }
     }
     ////////////////////////
-
-    ///--->> snake <<---///
     int xs=0, ys=0;
-    int counts=0;
-    while (counts==0){
-        xs = rand() % max_x;
-        ys = rand() % max_y;
-        if(map[ys][xs]=='.'){
-            counts++;
+    ///--->> snake <<---///
+    if(current_user->game_setting.snake_chasing==1){
+        xs = x; ys=y;
+    }
+    else {
+        int counts=0;
+        while (counts==0){
+            xs = rand() % max_x;
+            ys = rand() % max_y;
+            if(map[ys][xs]=='.'){
+                counts++;
+            }
         }
     }
+
     ////////////////////////
 
 
@@ -3029,6 +3242,42 @@ int easy_game_f2(struct user *current_user) {
 //        }
 //    }
 //    //////////////////////
+
+
+// speed spell
+    int x_speed_spell=0, y_speed_spell=0;
+    int countof= 1+  rand() % 2;
+    while (countof!=0){
+        x_speed_spell = rand() % max_x;
+        y_speed_spell = rand() % max_y;
+        if(map[y_speed_spell][x_speed_spell]=='.'){
+            map[y_speed_spell][x_speed_spell]='n'; //n stands for speed spell
+            countof--;
+        }
+    }
+    // health spell
+    int x_health_spell=0, y_health_spell=0;
+    countof= 1 + rand() % 2;
+    while (countof!=0){
+        x_health_spell = rand() % max_x;
+        y_health_spell = rand() % max_y;
+        if(map[y_health_spell][x_health_spell]=='.'){
+            map[y_health_spell][x_health_spell]='b'; //b stands for health spell
+            countof--;
+        }
+    }
+
+    //damage spell
+    int x_damage_spell=0, y_damage_spell=0;
+    countof= 1 + rand() % 2;
+    while (countof!=0){
+        x_damage_spell = rand() % max_x;
+        y_damage_spell = rand() % max_y;
+        if(map[y_damage_spell][x_damage_spell]=='.'){
+            map[y_damage_spell][x_damage_spell]='m'; //m stands for health spell
+            countof--;
+        }
+    }
 
 
 
@@ -3070,6 +3319,9 @@ int easy_game_f2(struct user *current_user) {
     int snake_health = 20;
     int undeed_health = 30;
     int snake_chase=0;
+    if(current_user->game_setting.snake_chasing==1){
+        snake_chase=1;
+    }
     char previous_c;
     int start_normal_arrow=0;  int xfor4, yfor4, counterfor4;int nw=0,na=0,ns=0,nd=0;
     int start_magic_wand=0;  int xfor3, yfor3, counterfor3;int mw=0,ma=0,ms=0,md=0;
@@ -3081,7 +3333,8 @@ int easy_game_f2(struct user *current_user) {
         }
     }
 
-
+    int food4health_counter=0;
+    int k=1;
 
     do {
         //print map
@@ -3161,6 +3414,22 @@ int easy_game_f2(struct user *current_user) {
                         mvprintw(i, j, "%lc", (wint_t)0x25B3);
                         attroff(COLOR_PAIR(6));
                     }
+                    else if(map[i][j]=='b') { //health spell
+                        attron(COLOR_PAIR(10));
+                        mvprintw(i, j, "%lc", (wint_t)0x2295);
+                        attroff(COLOR_PAIR(10));
+                    }
+                    else if(map[i][j]=='n'){ //speed spell
+                        attron(COLOR_PAIR(6));
+                        mvprintw(i, j, "%lc", (wint_t)0x27A4);
+                        attroff(COLOR_PAIR(6));
+
+                    }
+                    else if(map[i][j]=='m'){ //damage spell
+                        attron(COLOR_PAIR(11));
+                        mvprintw(i, j, "%lc", (wint_t)0x16ED);
+                        attroff(COLOR_PAIR(11));
+                    }
                     else {
                         mvaddch(i, j, map[i][j]);
 
@@ -3189,17 +3458,56 @@ int easy_game_f2(struct user *current_user) {
         }
 
         ///movement
-        if (c == 'j' || c =='J' && y > 0) new_y--;
-        if (c == 'k' || c == 'K' && y < max_y - 1) new_y++;
-        if (c == 'l' || c == 'L' && x < max_x - 1) new_x++;
-        if (c == 'h' || c == 'H' && x > 0) new_x--;
-        ///
+
+        if(current_user->spells.speed_spell_counter>0){
+            if (c == KEY_UP && y > 0) new_y-=2;
+            if (c == KEY_DOWN && y < max_y - 1) new_y+=2;
+            if (c == KEY_RIGHT && x < max_x - 1) new_x+=2;
+            if (c == KEY_LEFT && x > 0) new_x-=2;
+            current_user->spells.speed_spell_counter-=1;
+            if(current_user->spells.speed_spell_counter==0) current_user->spells.speed_spell_counter=0;
+        }
+        else{
+            if (c == KEY_UP && y > 0) new_y--;
+            if (c == KEY_DOWN && y < max_y - 1) new_y++;
+            if (c == KEY_RIGHT && x < max_x - 1) new_x++;
+            if (c == KEY_LEFT && x > 0) new_x--;
+
+        }
+
+        if(current_user->spells.damage_spell_counter>0){
+            k=2;
+            current_user->spells.damage_spell_counter-=1;
+            if (current_user->spells.damage_spell_counter<0) current_user->spells.damage_spell_counter=0;
+        } else {
+            k=1;
+        }
+
+
 
         if( (map[new_y][new_x] == '+' && (locked[new_y][new_x]==0 || locked[new_y][new_x]==2)) || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '.' ||
             map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
             map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
-            map[new_y][new_x] == '5' || map[new_y][new_x]=='=' || map[new_y][new_x]=='/') {
+            map[new_y][new_x] == '5'  || map[new_y][new_x]=='=' || map[new_y][new_x]=='/' || map[new_y][new_x]=='z'||
+            map[new_y][new_x] == 'x'  || map[new_y][new_x] == 'c' || map[new_y][new_x] == 'b' || map[new_y][new_x] == 'n'||
+            map[new_y][new_x] == 'm') {
 
+
+            if(map[new_y][new_x]=='b'){
+                mvprintw(2,3,"You claimed a Health spell              ");
+                current_user->spells.health_spell++;
+            }
+
+            if(map[new_y][new_x]=='n'){
+                mvprintw(2,3,"You claimed a Speed spell              ");
+                current_user->spells.speed_spell++;
+
+            }
+
+            if(map[new_y][new_x]=='m'){
+                mvprintw(2,3,"You claimed a Damage spell              ");
+                current_user->spells.damage_spell++;
+            }
 
             if(map[new_y][new_x]=='/'){
                 mvprintw(2,3,"You found an Ancient Key !              ");
@@ -3251,20 +3559,40 @@ int easy_game_f2(struct user *current_user) {
 
             if(map[new_y][new_x] == '2'){
                 current_user->weapons.Dagger=1;
-                mvprintw(2,3,"You found a Dagger!                  ");
+                mvprintw(2,3,"You found a Dagger! +10                  ");
                 current_user->weapons.Dagger_count+=10;
             }
+            if(map[new_y][new_x] == 'z'){
+                current_user->weapons.Dagger=1;
+                mvprintw(2,3,"You found a Dagger! +1                  ");
+                current_user->weapons.Dagger_count+=1;
+            }
+
 
             if(map[new_y][new_x] == '3'){
                 current_user->weapons.Magic_Wand=1;
-                mvprintw(2,3,"You found a Magic Wand!              ");
+                mvprintw(2,3,"You found a Magic Wand! +8             ");
                 current_user->weapons.Magic_Wand_count+=8;
             }
+            if(map[new_y][new_x] == 'x'){
+                current_user->weapons.Magic_Wand=1;
+                mvprintw(2,3,"You found a Magic Wand! +1             ");
+                current_user->weapons.Magic_Wand_count+=1;
+            }
+
+
             if(map[new_y][new_x] == '4'){
                 current_user->weapons.Normal_Arrow=1;
-                mvprintw(2,3,"You found a Normal Arrow!           ");
+                mvprintw(2,3,"You found a Normal Arrow! +20          ");
                 current_user->weapons.Normal_Arrow_count+=20;
             }
+            if(map[new_y][new_x] == 'c'){
+                current_user->weapons.Normal_Arrow=1;
+                mvprintw(2,3,"You found a Normal Arrow! +1          ");
+                current_user->weapons.Normal_Arrow_count+=1;
+            }
+
+
             if(map[new_y][new_x] == '5'){
                 current_user->weapons.Sword=1;
                 mvprintw(2,3,"You found a Sword!                   ");
@@ -3276,6 +3604,10 @@ int easy_game_f2(struct user *current_user) {
 
         if(map[y][x]!='+' && map[y][x]!='#'&&map[y][x]!='^' && map[y][x]!='='){
             map[y][x]='.';
+        }
+
+        if(c=='s'){
+            spell(current_user);
         }
 
         mvprintw(max_y-2,max_x-10,"GOLD: %d",current_user->new_golds+total_black_gold+total_yellow_gold);
@@ -3376,11 +3708,11 @@ int easy_game_f2(struct user *current_user) {
 
         draw_character(y, x, current_user->game_setting.player_color);
 
-        if(counter==30){
+        if(counter==40){
             health--;
             counter=0;
         }
-        if(counter==25){
+        if(counter==30){
             food--;
         }
         if(health==0){
@@ -3402,58 +3734,61 @@ int easy_game_f2(struct user *current_user) {
             if (in_use_weapon == 1) {
                 if ((abs(dy) == 1 || abs(dy) == -1 || abs(dy) == 0) &&
                     (abs(dx) == 1 || abs(dx) == -1 || abs(dx) == 0)) {
-                    deamon_health -= 5;
-                    mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
+                    deamon_health -= 5*k;
                     if (deamon_health <= 0) {
                         deamon_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
+
 
                 }
                 if ((abs(fy) == 1 || abs(fy) == -1 || abs(fy) == 0) &&
                     (abs(fx) == 1 || abs(fx) == -1 || abs(fx) == 0)) {
-                    fire_health -= 5;
-                    mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
+                    fire_health -= 5*k;
                     if (fire_health <= 0) {
                         fire_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
+
 
                 }
                 if ((abs(sy) == 1 || abs(sy) == -1 || abs(sy) == 0) &&
                     (abs(sx) == 1 || abs(sx) == -1 || abs(sx) == 0)) {
-                    snake_health -= 5;
-                    mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
+                    snake_health -= 5*k;
                     if (snake_health <= 0) {
                         snake_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
 
                 }
             }
             if(in_use_weapon==5){
                 if ((abs(dy) == 1 || abs(dy) == -1 || abs(dy) == 0) &&
                     (abs(dx) == 1 || abs(dx) == -1 || abs(dx) == 0)) {
-                    deamon_health -= 10;
-                    mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
+                    deamon_health -= 10*k;
                     if (deamon_health <= 0) {
                         deamon_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
 
                 }
                 if ((abs(fy) == 1 || abs(fy) == -1 || abs(fy) == 0) &&
                     (abs(fx) == 1 || abs(fx) == -1 || abs(fx) == 0)) {
-                    fire_health -= 10;
-                    mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
+                    fire_health -= 10*k;
                     if (fire_health <= 0) {
                         fire_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
+
 
                 }
                 if ((abs(sy) == 1 || abs(sy) == -1 || abs(sy) == 0) &&
                     (abs(sx) == 1 || abs(sx) == -1 || abs(sx) == 0)) {
-                    snake_health -= 10;
-                    mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
+                    snake_health -= 10*k;
                     if (snake_health <= 0) {
                         snake_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
 
                 }
             }
@@ -3485,19 +3820,19 @@ int easy_game_f2(struct user *current_user) {
         if(start_dagger == 1 && counterfor2 > 0) {
 
             if(xfor2 == new_x_f && yfor2 == new_y_f) {
-                fire_health -= 10;
+                fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
                 counterfor2=0;
             }
             if(xfor2 == new_x_s && yfor2 == new_y_s) {
-                snake_health -= 10;
+                snake_health -= 10*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
                 counterfor2=0;
             }
             if(xfor2 == xd && yfor2 == yd) {
-                deamon_health -= 10;
+                deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
                 mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
                 counterfor2=0;
@@ -3505,19 +3840,50 @@ int easy_game_f2(struct user *current_user) {
 
             if(da==1) {
                 xfor2--;
+                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
+                    counterfor2=0;
+                    if(map[yfor2][xfor2+1]=='.')
+                    {
+                        map[yfor2][xfor2+1]='z';
+                    }
+                }
             }
             else if(ds==1) {
                 yfor2++;
+                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
+                    counterfor2=0;
+                    if(map[yfor2-1][xfor2]=='.')
+                    {
+                        map[yfor2-1][xfor2]='z';
+                    }
+                }
             }
             else if(dd==1) {
                 xfor2++;
+                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
+                    counterfor2=0;
+                    if(map[yfor2][xfor2-1]=='.')
+                    {
+                        map[yfor2][xfor2-1]='z';
+                    }
+                }
             }
             else if(dw==1) {
                 yfor2--;
+                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
+                    counterfor2=0;
+                    if(map[yfor2+1][xfor2]=='.')
+                    {
+                        map[yfor2+1][xfor2]='z';
+                    }
+                }
             }
 
             counterfor2++;
             if(counterfor2 >= 5) {
+                if(map[yfor2][xfor2]=='.'){
+                    map[yfor2][xfor2]='z'; // z represents 1 dagger
+                }
                 start_dagger = 0;
                 counterfor2 = 0;
                 dd=0; da=0; dw=0; ds=0;
@@ -3557,19 +3923,19 @@ int easy_game_f2(struct user *current_user) {
         if(start_normal_arrow == 1 && counterfor4 > 0) {
 
             if(xfor4 == new_x_f && yfor4 == new_y_f) {
-                fire_health -= 10;
+                fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
                 counterfor4=0;
             }
             if(xfor4 == new_x_s && yfor2 == new_y_s) {
-                snake_health -= 10;
+                snake_health -= 10*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
                 counterfor4=0;
             }
             if(xfor4 == xd && yfor4== yd) {
-                deamon_health -= 10;
+                deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
                 mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
                 counterfor4=0;
@@ -3577,19 +3943,50 @@ int easy_game_f2(struct user *current_user) {
 
             if(na==1) {
                 xfor4--;
+                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
+                    counterfor4=0;
+                    if(map[yfor4][xfor4+1]=='.')
+                    {
+                        map[yfor4][xfor4+1]='c';
+                    }
+                }
             }
             else if(ns==1) {
                 yfor4++;
+                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
+                    counterfor4=0;
+                    if(map[yfor4-1][xfor4]=='.')
+                    {
+                        map[yfor4-1][xfor4]='c';
+                    }
+                }
             }
             else if(nd==1) {
                 xfor4++;
+                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
+                    counterfor4=0;
+                    if(map[yfor4][xfor4-1]=='.')
+                    {
+                        map[yfor4][xfor4-1]='c';
+                    }
+                }
             }
             else if(nw==1) {
                 yfor4--;
+                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
+                    counterfor4=0;
+                    if(map[yfor4+1][xfor4]=='.')
+                    {
+                        map[yfor4+1][xfor4]='c';
+                    }
+                }
             }
 
             counterfor4++;
             if(counterfor4 >= 5) {
+                if(map[yfor4][xfor4]=='.'){
+                    map[yfor4][xfor4]='c'; // c represents 1 normal arrow
+                }
                 start_normal_arrow = 0;
                 counterfor4 = 0;
                 nd=0; na=0; nw=0; ns=0;
@@ -3597,7 +3994,6 @@ int easy_game_f2(struct user *current_user) {
             if(map[yfor4][xfor4]=='.'){
                 mvaddch(yfor4, xfor4, '-');
             }
-            mvprintw(3, 3, "                                                            ");
 
             refresh();
         }
@@ -3629,20 +4025,20 @@ int easy_game_f2(struct user *current_user) {
         if(start_magic_wand == 1 && counterfor3 > 0) {
 
             if(xfor3 == new_x_f && yfor3 == new_y_f) {
-                fire_health -= 10;
+                fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
                 counterfor3=0;
             }
             if(xfor3 == new_x_s && yfor3 == new_y_s) {
-                snake_health -= 10;
+                snake_health -= 10*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
                 counterfor3=0;
                 snake_chase=0;
             }
             if(xfor3 == xd && yfor3 == yd) {
-                deamon_health -= 10;
+                deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
                 mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
                 counterfor3=0;
@@ -3650,19 +4046,50 @@ int easy_game_f2(struct user *current_user) {
 
             if(ma==1) {
                 xfor3--;
+                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
+                    counterfor3=0;
+                    if(map[yfor3][xfor3+1]=='.')
+                    {
+                        map[yfor3][xfor3+1]='x';
+                    }
+                }
             }
             else if(ms==1) {
                 yfor3++;
+                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
+                    counterfor3=0;
+                    if(map[yfor3-1][xfor3+1]=='.')
+                    {
+                        map[yfor3-1][xfor3+1]='x';
+                    }
+                }
             }
             else if(md==1) {
                 xfor3++;
+                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
+                    counterfor3=0;
+                    if(map[yfor3][xfor3-1]=='.')
+                    {
+                        map[yfor3][xfor3-1]='x';
+                    }
+                }
             }
             else if(mw==1) {
                 yfor3--;
+                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
+                    counterfor3=0;
+                    if(map[yfor3+1][xfor3]=='.')
+                    {
+                        map[yfor3+1][xfor3]='x';
+                    }
+                }
             }
 
             counterfor3++;
             if(counterfor3 >= 5) {
+                if(map[yfor3][xfor3]=='.'){
+                    map[yfor3][xfor3]='x'; // x represents 1 magic wand
+                }
                 start_magic_wand = 0;
                 counterfor3 = 0;
                 md=0; ma=0; mw=0; ms=0;
@@ -3679,9 +4106,6 @@ int easy_game_f2(struct user *current_user) {
 
 
 
-
-
-
         //door code
         int status=2;
         init_pair(12,COLOR_YELLOW,COLOR_BLACK);
@@ -3690,15 +4114,11 @@ int easy_game_f2(struct user *current_user) {
 
 
 
-        mvprintw(5,3,"                                                                ");
-
-
 
         if(locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
                                                                    new_y-1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
                                                                    new_y==cordinate_locked[0] && new_x+1==cordinate_locked[1] ||
                                                                    new_y==cordinate_locked[0] && new_x-1==cordinate_locked[1] )){
-            mvprintw(4,3,"                                                               ",password);
             if (no_lock==0){
                 if(password_counter>3){
                     attron(COLOR_PAIR(14));
@@ -3747,6 +4167,20 @@ int easy_game_f2(struct user *current_user) {
         }
         if(counter==40){
             strcpy(password,"0");
+        }
+        if(food==10){
+            if(food4health_counter==2){
+                if(current_user->spells.health_spell_counter>0){
+                    health+=2;
+                    current_user->spells.health_spell_counter-=1;
+                    if(current_user->spells.health_spell_counter<0) current_user->spells.health_spell_counter=0;
+                }
+                else{
+                    health+=1;
+                }
+                if(health>10) health=10;
+                food4health_counter=0;
+            }
         }
 
 
@@ -3822,9 +4256,14 @@ int easy_game_f2(struct user *current_user) {
             current_user->food1=food1;
             current_user->new_golds+=total_black_gold+total_yellow_gold;
             current_user->weapons.in_use_weapon=in_use_weapon;
+            if(snake_chase==1) current_user->game_setting.snake_chasing=1;
+            else current_user->game_setting.snake_chasing=0;
             return easy_game_f3(current_user);
         }
+        previous_x = new_x;
+        previous_y = new_y;
         previous_c =c;
+        food4health_counter++;
 
     } while ((c = getch()) != 27);
 
@@ -3992,7 +4431,7 @@ int easy_game_f3(struct user *current_user) {
                     counterrr++;
                     map[y1][current_x] = '#';
                     cori_number[y1][current_x]=num+1;
-                    if(counterrr%30==0){
+                    if(counterrr%34==0){
                         if(map[y1+1][current_x]==' '){
                             map[++y1][current_x]='#';
                             cori_number[y1][current_x]=num+1;
@@ -4292,17 +4731,22 @@ int easy_game_f3(struct user *current_user) {
     }
     ////////////////////////
 
-    ///--->> snake <<---///
     int xs=0, ys=0;
-    int counts=0;
-    while (counts==0){
-        xs = rand() % max_x;
-        ys = rand() % max_y;
-        if(map[ys][xs]=='.'){
-            counts++;
+    ///--->> snake <<---///
+    if(current_user->game_setting.snake_chasing==1){
+        xs = x; ys=y;
+    }
+    else {
+        int counts = 0;
+        while (counts == 0) {
+            xs = rand() % max_x;
+            ys = rand() % max_y;
+            if (map[ys][xs] == '.') {
+                counts++;
+            }
         }
     }
-    ////////////////////////
+   /////
 
 
 //    ///--->> giant <<---///
@@ -4331,8 +4775,40 @@ int easy_game_f3(struct user *current_user) {
 //    //////////////////////
 
 
+// speed spell
+    int x_speed_spell=0, y_speed_spell=0;
+    int countof= 1+  rand() % 2;
+    while (countof!=0){
+        x_speed_spell = rand() % max_x;
+        y_speed_spell = rand() % max_y;
+        if(map[y_speed_spell][x_speed_spell]=='.'){
+            map[y_speed_spell][x_speed_spell]='n'; //n stands for speed spell
+            countof--;
+        }
+    }
+    // health spell
+    int x_health_spell=0, y_health_spell=0;
+    countof= 1 + rand() % 2;
+    while (countof!=0){
+        x_health_spell = rand() % max_x;
+        y_health_spell = rand() % max_y;
+        if(map[y_health_spell][x_health_spell]=='.'){
+            map[y_health_spell][x_health_spell]='b'; //b stands for health spell
+            countof--;
+        }
+    }
 
-
+    //damage spell
+    int x_damage_spell=0, y_damage_spell=0;
+    countof= 1 + rand() % 2;
+    while (countof!=0){
+        x_damage_spell = rand() % max_x;
+        y_damage_spell = rand() % max_y;
+        if(map[y_damage_spell][x_damage_spell]=='.'){
+            map[y_damage_spell][x_damage_spell]='m'; //m stands for health spell
+            countof--;
+        }
+    }
 
 
 
@@ -4380,6 +4856,10 @@ int easy_game_f3(struct user *current_user) {
             is_sth_here[j][i]=0;
         }
     }
+    int food4health_counter=0;
+    int k=1;
+
+
 
 
     do {
@@ -4460,6 +4940,23 @@ int easy_game_f3(struct user *current_user) {
                         mvprintw(i, j, "%lc", (wint_t)0x25B3);
                         attroff(COLOR_PAIR(6));
                     }
+                    else if(map[i][j]=='b') { //health spell
+                        attron(COLOR_PAIR(10));
+                        mvprintw(i, j, "%lc", (wint_t)0x2295);
+                        attroff(COLOR_PAIR(10));
+                    }
+                    else if(map[i][j]=='n'){ //speed spell
+                        attron(COLOR_PAIR(6));
+                        mvprintw(i, j, "%lc", (wint_t)0x27A4);
+                        attroff(COLOR_PAIR(6));
+
+                    }
+                    else if(map[i][j]=='m'){ //damage spell
+                        attron(COLOR_PAIR(11));
+                        mvprintw(i, j, "%lc", (wint_t)0x16ED);
+                        attroff(COLOR_PAIR(11));
+                    }
+
                     else {
                         mvaddch(i, j, map[i][j]);
 
@@ -4487,18 +4984,56 @@ int easy_game_f3(struct user *current_user) {
             c = getch();
         }
         ///movement
-        if (c == 'j' || c =='J' && y > 0) new_y--;
-        if (c == 'k' || c == 'K' && y < max_y - 1) new_y++;
-        if (c == 'l' || c == 'L' && x < max_x - 1) new_x++;
-        if (c == 'h' || c == 'H' && x > 0) new_x--;
-        ///
+
+        if(current_user->spells.speed_spell_counter>0){
+            if (c == KEY_UP && y > 0) new_y-=2;
+            if (c == KEY_DOWN && y < max_y - 1) new_y+=2;
+            if (c == KEY_RIGHT && x < max_x - 1) new_x+=2;
+            if (c == KEY_LEFT && x > 0) new_x-=2;
+            current_user->spells.speed_spell_counter-=1;
+            if(current_user->spells.speed_spell_counter==0) current_user->spells.speed_spell_counter=0;
+        }
+        else{
+            if (c == KEY_UP && y > 0) new_y--;
+            if (c == KEY_DOWN && y < max_y - 1) new_y++;
+            if (c == KEY_RIGHT && x < max_x - 1) new_x++;
+            if (c == KEY_LEFT && x > 0) new_x--;
+
+        }
+
+        if(current_user->spells.damage_spell_counter>0){
+            k=2;
+            current_user->spells.damage_spell_counter-=1;
+            if (current_user->spells.damage_spell_counter<0) current_user->spells.damage_spell_counter=0;
+        } else {
+            k=1;
+        }
+
 
 
         if( (map[new_y][new_x] == '+' && (locked[new_y][new_x]==0 || locked[new_y][new_x]==2)) || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '.' ||
             map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
             map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
-            map[new_y][new_x] == '5' || map[new_y][new_x]=='=' || map[new_y][new_x]=='/') {
+            map[new_y][new_x] == '5'  || map[new_y][new_x]=='=' || map[new_y][new_x]=='/' || map[new_y][new_x]=='z'||
+            map[new_y][new_x] == 'x'  || map[new_y][new_x] == 'c' || map[new_y][new_x] == 'b' || map[new_y][new_x] == 'n'||
+            map[new_y][new_x] == 'm') {
 
+
+            if(map[new_y][new_x]=='b'){
+                mvprintw(2,3,"You claimed a Health spell              ");
+                current_user->spells.health_spell++;
+            }
+
+            if(map[new_y][new_x]=='n'){
+                mvprintw(2,3,"You claimed a Speed spell              ");
+                current_user->spells.speed_spell++;
+
+            }
+
+            if(map[new_y][new_x]=='m'){
+                mvprintw(2,3,"You claimed a Damage spell              ");
+                current_user->spells.damage_spell++;
+            }
 
             if(map[new_y][new_x]=='/'){
                 mvprintw(2,3,"You found an Ancient Key !              ");
@@ -4550,20 +5085,40 @@ int easy_game_f3(struct user *current_user) {
 
             if(map[new_y][new_x] == '2'){
                 current_user->weapons.Dagger=1;
-                mvprintw(2,3,"You found a Dagger!                  ");
+                mvprintw(2,3,"You found a Dagger! +10                  ");
                 current_user->weapons.Dagger_count+=10;
             }
+            if(map[new_y][new_x] == 'z'){
+                current_user->weapons.Dagger=1;
+                mvprintw(2,3,"You found a Dagger! +1                  ");
+                current_user->weapons.Dagger_count+=1;
+            }
+
 
             if(map[new_y][new_x] == '3'){
                 current_user->weapons.Magic_Wand=1;
-                mvprintw(2,3,"You found a Magic Wand!              ");
+                mvprintw(2,3,"You found a Magic Wand! +8             ");
                 current_user->weapons.Magic_Wand_count+=8;
             }
+            if(map[new_y][new_x] == 'x'){
+                current_user->weapons.Magic_Wand=1;
+                mvprintw(2,3,"You found a Magic Wand! +1             ");
+                current_user->weapons.Magic_Wand_count+=1;
+            }
+
+
             if(map[new_y][new_x] == '4'){
                 current_user->weapons.Normal_Arrow=1;
-                mvprintw(2,3,"You found a Normal Arrow!           ");
+                mvprintw(2,3,"You found a Normal Arrow! +20          ");
                 current_user->weapons.Normal_Arrow_count+=20;
             }
+            if(map[new_y][new_x] == 'c'){
+                current_user->weapons.Normal_Arrow=1;
+                mvprintw(2,3,"You found a Normal Arrow! +1          ");
+                current_user->weapons.Normal_Arrow_count+=1;
+            }
+
+
             if(map[new_y][new_x] == '5'){
                 current_user->weapons.Sword=1;
                 mvprintw(2,3,"You found a Sword!                   ");
@@ -4576,12 +5131,15 @@ int easy_game_f3(struct user *current_user) {
         if(map[y][x]!='+' && map[y][x]!='#'&&map[y][x]!='^' && map[y][x]!='='){
             map[y][x]='.';
         }
+        if(c=='s'){
+            spell(current_user);
+        }
 
         mvprintw(max_y-2,max_x-10,"GOLD: %d",current_user->new_golds+total_black_gold+total_yellow_gold);
 
 
 
-//deamon ////////
+    //deamon ////////
 
         if(deamon_health>0){
 
@@ -4596,11 +5154,11 @@ int easy_game_f3(struct user *current_user) {
 
         }
 
-////////--------------------------
+    ////////--------------------------
 
 
 
-//fire breathing monster//////////////
+    //fire breathing monster//////////////
         int new_x_f , new_y_f;
         int fx = new_x - xf;
         int fy = new_y - yf;
@@ -4645,8 +5203,8 @@ int easy_game_f3(struct user *current_user) {
         }
 
 
-//////----------------------
-////snake////////////////////////
+        //////----------------------
+        ////snake////////////////////////
         int new_y_s;
         int new_x_s;
         if(room_number[new_y][new_x]==room_number[ys][xs] && snake_health>0){
@@ -4671,15 +5229,15 @@ int easy_game_f3(struct user *current_user) {
         }
         refresh();
 
-////////////---------------------//
+        ////////////---------------------//
 
         draw_character(y, x, current_user->game_setting.player_color);
 
-        if(counter==30){
+        if(counter==40){
             health--;
             counter=0;
         }
-        if(counter==25){
+        if(counter==30){
             food--;
         }
         if(health==0){
@@ -4688,7 +5246,7 @@ int easy_game_f3(struct user *current_user) {
             return 0;
         }
 
-//door code
+        //door code
         int status=2;
         init_pair(12,COLOR_YELLOW,COLOR_BLACK);
         init_pair(13,COLOR_MAGENTA,COLOR_BLACK);
@@ -4703,69 +5261,71 @@ int easy_game_f3(struct user *current_user) {
         fy = new_y_f - new_y;
         int sx = new_x_s -  new_x;
         int sy = new_y_s - new_y;
-
         if(c=='p' || c=='P') {
             if (in_use_weapon == 1) {
                 if ((abs(dy) == 1 || abs(dy) == -1 || abs(dy) == 0) &&
                     (abs(dx) == 1 || abs(dx) == -1 || abs(dx) == 0)) {
-                    deamon_health -= 5;
-                    mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
+                    deamon_health -= 5*k;
                     if (deamon_health <= 0) {
                         deamon_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
+
 
                 }
                 if ((abs(fy) == 1 || abs(fy) == -1 || abs(fy) == 0) &&
                     (abs(fx) == 1 || abs(fx) == -1 || abs(fx) == 0)) {
-                    fire_health -= 5;
-                    mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
+                    fire_health -= 5*k;
                     if (fire_health <= 0) {
                         fire_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
+
 
                 }
                 if ((abs(sy) == 1 || abs(sy) == -1 || abs(sy) == 0) &&
                     (abs(sx) == 1 || abs(sx) == -1 || abs(sx) == 0)) {
-                    snake_health -= 5;
-                    mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
+                    snake_health -= 5*k;
                     if (snake_health <= 0) {
                         snake_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
 
                 }
             }
             if(in_use_weapon==5){
                 if ((abs(dy) == 1 || abs(dy) == -1 || abs(dy) == 0) &&
                     (abs(dx) == 1 || abs(dx) == -1 || abs(dx) == 0)) {
-                    deamon_health -= 10;
-                    mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
+                    deamon_health -= 10*k;
                     if (deamon_health <= 0) {
                         deamon_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
 
                 }
                 if ((abs(fy) == 1 || abs(fy) == -1 || abs(fy) == 0) &&
                     (abs(fx) == 1 || abs(fx) == -1 || abs(fx) == 0)) {
-                    fire_health -= 10;
-                    mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
+                    fire_health -= 10*k;
                     if (fire_health <= 0) {
                         fire_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
+
 
                 }
                 if ((abs(sy) == 1 || abs(sy) == -1 || abs(sy) == 0) &&
                     (abs(sx) == 1 || abs(sx) == -1 || abs(sx) == 0)) {
-                    snake_health -= 10;
-                    mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
+                    snake_health -= 10*k;
                     if (snake_health <= 0) {
                         snake_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
 
                 }
             }
         }
 
-///////////dagger
+        ///////////dagger
         if(in_use_weapon == 2 && previous_c == 'p') {
             start_dagger = 1;
             xfor2 = new_x;
@@ -4791,19 +5351,19 @@ int easy_game_f3(struct user *current_user) {
         if(start_dagger == 1 && counterfor2 > 0) {
 
             if(xfor2 == new_x_f && yfor2 == new_y_f) {
-                fire_health -= 10;
+                fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
                 counterfor2=0;
             }
             if(xfor2 == new_x_s && yfor2 == new_y_s) {
-                snake_health -= 10;
+                snake_health -= 10*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
                 counterfor2=0;
             }
             if(xfor2 == xd && yfor2 == yd) {
-                deamon_health -= 10;
+                deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
                 mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
                 counterfor2=0;
@@ -4811,19 +5371,50 @@ int easy_game_f3(struct user *current_user) {
 
             if(da==1) {
                 xfor2--;
+                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
+                    counterfor2=0;
+                    if(map[yfor2][xfor2+1]=='.')
+                    {
+                        map[yfor2][xfor2+1]='z';
+                    }
+                }
             }
             else if(ds==1) {
                 yfor2++;
+                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
+                    counterfor2=0;
+                    if(map[yfor2-1][xfor2]=='.')
+                    {
+                        map[yfor2-1][xfor2]='z';
+                    }
+                }
             }
             else if(dd==1) {
                 xfor2++;
+                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
+                    counterfor2=0;
+                    if(map[yfor2][xfor2-1]=='.')
+                    {
+                        map[yfor2][xfor2-1]='z';
+                    }
+                }
             }
             else if(dw==1) {
                 yfor2--;
+                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
+                    counterfor2=0;
+                    if(map[yfor2+1][xfor2]=='.')
+                    {
+                        map[yfor2+1][xfor2]='z';
+                    }
+                }
             }
 
             counterfor2++;
             if(counterfor2 >= 5) {
+                if(map[yfor2][xfor2]=='.'){
+                    map[yfor2][xfor2]='z'; // z represents 1 dagger
+                }
                 start_dagger = 0;
                 counterfor2 = 0;
                 dd=0; da=0; dw=0; ds=0;
@@ -4834,10 +5425,10 @@ int easy_game_f3(struct user *current_user) {
             mvprintw(3, 3, "                                                            ");
             refresh();
         }
-////////////
+        ////////////
 
 
-///////////normal arrow
+        ///////////normal arrow
         if(in_use_weapon == 4 && previous_c == 'p') {
             start_normal_arrow = 1;
             xfor4 = new_x;
@@ -4863,19 +5454,19 @@ int easy_game_f3(struct user *current_user) {
         if(start_normal_arrow == 1 && counterfor4 > 0) {
 
             if(xfor4 == new_x_f && yfor4 == new_y_f) {
-                fire_health -= 10;
+                fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
                 counterfor4=0;
             }
             if(xfor4 == new_x_s && yfor2 == new_y_s) {
-                snake_health -= 10;
+                snake_health -= 10*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
                 counterfor4=0;
             }
             if(xfor4 == xd && yfor4== yd) {
-                deamon_health -= 10;
+                deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
                 mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
                 counterfor4=0;
@@ -4883,19 +5474,50 @@ int easy_game_f3(struct user *current_user) {
 
             if(na==1) {
                 xfor4--;
+                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
+                    counterfor4=0;
+                    if(map[yfor4][xfor4+1]=='.')
+                    {
+                        map[yfor4][xfor4+1]='c';
+                    }
+                }
             }
             else if(ns==1) {
                 yfor4++;
+                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
+                    counterfor4=0;
+                    if(map[yfor4-1][xfor4]=='.')
+                    {
+                        map[yfor4-1][xfor4]='c';
+                    }
+                }
             }
             else if(nd==1) {
                 xfor4++;
+                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
+                    counterfor4=0;
+                    if(map[yfor4][xfor4-1]=='.')
+                    {
+                        map[yfor4][xfor4-1]='c';
+                    }
+                }
             }
             else if(nw==1) {
                 yfor4--;
+                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
+                    counterfor4=0;
+                    if(map[yfor4+1][xfor4]=='.')
+                    {
+                        map[yfor4+1][xfor4]='c';
+                    }
+                }
             }
 
             counterfor4++;
             if(counterfor4 >= 5) {
+                if(map[yfor4][xfor4]=='.'){
+                    map[yfor4][xfor4]='c'; // c represents 1 normal arrow
+                }
                 start_normal_arrow = 0;
                 counterfor4 = 0;
                 nd=0; na=0; nw=0; ns=0;
@@ -4903,13 +5525,12 @@ int easy_game_f3(struct user *current_user) {
             if(map[yfor4][xfor4]=='.'){
                 mvaddch(yfor4, xfor4, '-');
             }
-            mvprintw(3, 3, "                                                            ");
 
             refresh();
         }
-////////////
+        ////////////
 
-///////////Magic wand
+        ///////////Magic wand
         if(in_use_weapon == 3 && previous_c == 'p') {
             start_magic_wand = 1;
             xfor3 = new_x;
@@ -4935,20 +5556,20 @@ int easy_game_f3(struct user *current_user) {
         if(start_magic_wand == 1 && counterfor3 > 0) {
 
             if(xfor3 == new_x_f && yfor3 == new_y_f) {
-                fire_health -= 10;
+                fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
                 counterfor3=0;
             }
             if(xfor3 == new_x_s && yfor3 == new_y_s) {
-                snake_health -= 10;
+                snake_health -= 10*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
                 counterfor3=0;
                 snake_chase=0;
             }
             if(xfor3 == xd && yfor3 == yd) {
-                deamon_health -= 10;
+                deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
                 mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
                 counterfor3=0;
@@ -4956,19 +5577,50 @@ int easy_game_f3(struct user *current_user) {
 
             if(ma==1) {
                 xfor3--;
+                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
+                    counterfor3=0;
+                    if(map[yfor3][xfor3+1]=='.')
+                    {
+                        map[yfor3][xfor3+1]='x';
+                    }
+                }
             }
             else if(ms==1) {
                 yfor3++;
+                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
+                    counterfor3=0;
+                    if(map[yfor3-1][xfor3+1]=='.')
+                    {
+                        map[yfor3-1][xfor3+1]='x';
+                    }
+                }
             }
             else if(md==1) {
                 xfor3++;
+                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
+                    counterfor3=0;
+                    if(map[yfor3][xfor3-1]=='.')
+                    {
+                        map[yfor3][xfor3-1]='x';
+                    }
+                }
             }
             else if(mw==1) {
                 yfor3--;
+                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
+                    counterfor3=0;
+                    if(map[yfor3+1][xfor3]=='.')
+                    {
+                        map[yfor3+1][xfor3]='x';
+                    }
+                }
             }
 
             counterfor3++;
             if(counterfor3 >= 5) {
+                if(map[yfor3][xfor3]=='.'){
+                    map[yfor3][xfor3]='x'; // x represents 1 magic wand
+                }
                 start_magic_wand = 0;
                 counterfor3 = 0;
                 md=0; ma=0; mw=0; ms=0;
@@ -4979,7 +5631,7 @@ int easy_game_f3(struct user *current_user) {
             mvprintw(2, 3, "                                                            ");
             refresh();
         }
-////////////
+        ////////////
 
 
 
@@ -5037,6 +5689,22 @@ int easy_game_f3(struct user *current_user) {
         if(counter==40){
             strcpy(password,"0");
         }
+
+        if(food==10){
+            if(food4health_counter==2){
+                if(current_user->spells.health_spell_counter>0){
+                    health+=2;
+                    current_user->spells.health_spell_counter-=1;
+                    if(current_user->spells.health_spell_counter<0) current_user->spells.health_spell_counter=0;
+                }
+                else{
+                    health+=1;
+                }
+                if(health>10) health=10;
+                food4health_counter=0;
+            }
+        }
+
         //health
         mvprintw(max_y-2,2,"health: ");
         refresh();
@@ -5109,9 +5777,14 @@ int easy_game_f3(struct user *current_user) {
             current_user->food1=food1;
             current_user->new_golds+=total_black_gold+total_yellow_gold;
             current_user->weapons.in_use_weapon=in_use_weapon;
+            if(snake_chase==1) current_user->game_setting.snake_chasing=1;
+            else current_user->game_setting.snake_chasing=0;
             return easy_game_f4(current_user);
         }
+        previous_x = new_x;
+        previous_y = new_y;
         previous_c =c;
+        food4health_counter++;
 
 
     } while ((c = getch()) != 27);
@@ -5301,7 +5974,7 @@ int easy_game_f4(struct user *current_user) {
                     counterrr++;
                     map[y1][current_x] = '#';
                     cori_number[y1][current_x]=num+1;
-                    if(counterrr%30==0){
+                    if(counterrr%34==0){
                         if(map[y1+1][current_x]==' '){
                             map[++y1][current_x]='#';
                             cori_number[y1][current_x]=num+1;
@@ -5641,17 +6314,22 @@ int easy_game_f4(struct user *current_user) {
     }
     ////////////////////////
 
-    ///--->> snake <<---///
     int xs=0, ys=0;
-    int counts=0;
-    while (counts==0){
-        xs = rand() % max_x;
-        ys = rand() % max_y;
-        if(map[ys][xs]=='.'){
-            counts++;
+    ///--->> snake <<---///
+    if(current_user->game_setting.snake_chasing==1){
+        xs = x; ys=y;
+    }
+    else {
+        int counts = 0;
+        while (counts == 0) {
+            xs = rand() % max_x;
+            ys = rand() % max_y;
+            if (map[ys][xs] == '.') {
+                counts++;
+            }
         }
     }
-    ////////////////////////
+    /////
 
 
 //    ///--->> giant <<---///
@@ -5678,6 +6356,43 @@ int easy_game_f4(struct user *current_user) {
 //        }
 //    }
 //    //////////////////////
+
+
+// speed spell
+    int x_speed_spell=0, y_speed_spell=0;
+    int countof= 1+  rand() % 2;
+    while (countof!=0){
+        x_speed_spell = rand() % max_x;
+        y_speed_spell = rand() % max_y;
+        if(map[y_speed_spell][x_speed_spell]=='.'){
+            map[y_speed_spell][x_speed_spell]='n'; //n stands for speed spell
+            countof--;
+        }
+    }
+    // health spell
+    int x_health_spell=0, y_health_spell=0;
+    countof= 1 + rand() % 2;
+    while (countof!=0){
+        x_health_spell = rand() % max_x;
+        y_health_spell = rand() % max_y;
+        if(map[y_health_spell][x_health_spell]=='.'){
+            map[y_health_spell][x_health_spell]='b'; //b stands for health spell
+            countof--;
+        }
+    }
+
+    //damage spell
+    int x_damage_spell=0, y_damage_spell=0;
+    countof= 1 + rand() % 2;
+    while (countof!=0){
+        x_damage_spell = rand() % max_x;
+        y_damage_spell = rand() % max_y;
+        if(map[y_damage_spell][x_damage_spell]=='.'){
+            map[y_damage_spell][x_damage_spell]='m'; //m stands for health spell
+            countof--;
+        }
+    }
+
 
 
 
@@ -5725,6 +6440,8 @@ int easy_game_f4(struct user *current_user) {
             is_sth_here[j][i]=0;
         }
     }
+    int food4health_counter=0;
+    int k=1;
 
 
     do {
@@ -5805,6 +6522,23 @@ int easy_game_f4(struct user *current_user) {
                         mvprintw(i, j, "%lc", (wint_t)0x25B3);
                         attroff(COLOR_PAIR(6));
                     }
+
+                    else if(map[i][j]=='b') { //health spell
+                        attron(COLOR_PAIR(10));
+                        mvprintw(i, j, "%lc", (wint_t)0x2295);
+                        attroff(COLOR_PAIR(10));
+                    }
+                    else if(map[i][j]=='n'){ //speed spell
+                        attron(COLOR_PAIR(6));
+                        mvprintw(i, j, "%lc", (wint_t)0x27A4);
+                        attroff(COLOR_PAIR(6));
+
+                    }
+                    else if(map[i][j]=='m'){ //damage spell
+                        attron(COLOR_PAIR(11));
+                        mvprintw(i, j, "%lc", (wint_t)0x16ED);
+                        attroff(COLOR_PAIR(11));
+                    }
                     else {
                         mvaddch(i, j, map[i][j]);
 
@@ -5832,17 +6566,56 @@ int easy_game_f4(struct user *current_user) {
             c = getch();
         }
         ///movement
-        if (c == 'j' || c =='J' && y > 0) new_y--;
-        if (c == 'k' || c == 'K' && y < max_y - 1) new_y++;
-        if (c == 'l' || c == 'L' && x < max_x - 1) new_x++;
-        if (c == 'h' || c == 'H' && x > 0) new_x--;
-        ///
+
+        if(current_user->spells.speed_spell_counter>0){
+            if (c == KEY_UP && y > 0) new_y-=2;
+            if (c == KEY_DOWN && y < max_y - 1) new_y+=2;
+            if (c == KEY_RIGHT && x < max_x - 1) new_x+=2;
+            if (c == KEY_LEFT && x > 0) new_x-=2;
+            current_user->spells.speed_spell_counter-=1;
+            if(current_user->spells.speed_spell_counter==0) current_user->spells.speed_spell_counter=0;
+        }
+        else{
+            if (c == KEY_UP && y > 0) new_y--;
+            if (c == KEY_DOWN && y < max_y - 1) new_y++;
+            if (c == KEY_RIGHT && x < max_x - 1) new_x++;
+            if (c == KEY_LEFT && x > 0) new_x--;
+
+        }
+
+        if(current_user->spells.damage_spell_counter>0){
+            k=2;
+            current_user->spells.damage_spell_counter-=1;
+            if (current_user->spells.damage_spell_counter<0) current_user->spells.damage_spell_counter=0;
+        } else {
+            k=1;
+        }
+
+
 
         if( (map[new_y][new_x] == '+' && (locked[new_y][new_x]==0 || locked[new_y][new_x]==2)) || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '.' ||
             map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
             map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
-            map[new_y][new_x] == '5' || map[new_y][new_x]=='=' || map[new_y][new_x]=='/') {
+            map[new_y][new_x] == '5'  || map[new_y][new_x]=='=' || map[new_y][new_x]=='/' || map[new_y][new_x]=='z'||
+            map[new_y][new_x] == 'x'  || map[new_y][new_x] == 'c' || map[new_y][new_x] == 'b' || map[new_y][new_x] == 'n'||
+            map[new_y][new_x] == 'm') {
 
+
+            if(map[new_y][new_x]=='b'){
+                mvprintw(2,3,"You claimed a Health spell              ");
+                current_user->spells.health_spell++;
+            }
+
+            if(map[new_y][new_x]=='n'){
+                mvprintw(2,3,"You claimed a Speed spell              ");
+                current_user->spells.speed_spell++;
+
+            }
+
+            if(map[new_y][new_x]=='m'){
+                mvprintw(2,3,"You claimed a Damage spell              ");
+                current_user->spells.damage_spell++;
+            }
 
             if(map[new_y][new_x]=='/'){
                 mvprintw(2,3,"You found an Ancient Key !              ");
@@ -5894,20 +6667,40 @@ int easy_game_f4(struct user *current_user) {
 
             if(map[new_y][new_x] == '2'){
                 current_user->weapons.Dagger=1;
-                mvprintw(2,3,"You found a Dagger!                  ");
+                mvprintw(2,3,"You found a Dagger! +10                  ");
                 current_user->weapons.Dagger_count+=10;
             }
+            if(map[new_y][new_x] == 'z'){
+                current_user->weapons.Dagger=1;
+                mvprintw(2,3,"You found a Dagger! +1                  ");
+                current_user->weapons.Dagger_count+=1;
+            }
+
 
             if(map[new_y][new_x] == '3'){
                 current_user->weapons.Magic_Wand=1;
-                mvprintw(2,3,"You found a Magic Wand!              ");
+                mvprintw(2,3,"You found a Magic Wand! +8             ");
                 current_user->weapons.Magic_Wand_count+=8;
             }
+            if(map[new_y][new_x] == 'x'){
+                current_user->weapons.Magic_Wand=1;
+                mvprintw(2,3,"You found a Magic Wand! +1             ");
+                current_user->weapons.Magic_Wand_count+=1;
+            }
+
+
             if(map[new_y][new_x] == '4'){
                 current_user->weapons.Normal_Arrow=1;
-                mvprintw(2,3,"You found a Normal Arrow!           ");
+                mvprintw(2,3,"You found a Normal Arrow! +20          ");
                 current_user->weapons.Normal_Arrow_count+=20;
             }
+            if(map[new_y][new_x] == 'c'){
+                current_user->weapons.Normal_Arrow=1;
+                mvprintw(2,3,"You found a Normal Arrow! +1          ");
+                current_user->weapons.Normal_Arrow_count+=1;
+            }
+
+
             if(map[new_y][new_x] == '5'){
                 current_user->weapons.Sword=1;
                 mvprintw(2,3,"You found a Sword!                   ");
@@ -5921,12 +6714,16 @@ int easy_game_f4(struct user *current_user) {
             map[y][x]='.';
         }
 
+        if(c=='s'){
+            spell(current_user);
+        }
+
 
         mvprintw(max_y-2,max_x-10,"GOLD: %d",current_user->new_golds+total_black_gold+total_yellow_gold);
 
 
 
-//deamon ////////
+        //deamon ////////
 
         if(deamon_health>0){
 
@@ -5941,11 +6738,11 @@ int easy_game_f4(struct user *current_user) {
 
         }
 
-////////--------------------------
+        ////////--------------------------
 
 
 
-//fire breathing monster//////////////
+        //fire breathing monster//////////////
         int new_x_f , new_y_f;
         int fx = new_x - xf;
         int fy = new_y - yf;
@@ -5990,8 +6787,8 @@ int easy_game_f4(struct user *current_user) {
         }
 
 
-//////----------------------
-////snake////////////////////////
+        //////----------------------
+        ////snake////////////////////////
         int new_y_s;
         int new_x_s;
         if(room_number[new_y][new_x]==room_number[ys][xs] && snake_health>0){
@@ -6016,15 +6813,15 @@ int easy_game_f4(struct user *current_user) {
         }
         refresh();
 
-////////////---------------------//
+        ////////////---------------------//
 
         draw_character(y, x, current_user->game_setting.player_color);
 
-        if(counter==30){
+        if(counter==40){
             health--;
             counter=0;
         }
-        if(counter==25){
+        if(counter==30){
             food--;
         }
         if(health==0){
@@ -6033,7 +6830,7 @@ int easy_game_f4(struct user *current_user) {
             return 0;
         }
 
-//door code
+        //door code
         int status=2;
         init_pair(12,COLOR_YELLOW,COLOR_BLACK);
         init_pair(13,COLOR_MAGENTA,COLOR_BLACK);
@@ -6048,69 +6845,71 @@ int easy_game_f4(struct user *current_user) {
         fy = new_y_f - new_y;
         int sx = new_x_s -  new_x;
         int sy = new_y_s - new_y;
-
         if(c=='p' || c=='P') {
             if (in_use_weapon == 1) {
                 if ((abs(dy) == 1 || abs(dy) == -1 || abs(dy) == 0) &&
                     (abs(dx) == 1 || abs(dx) == -1 || abs(dx) == 0)) {
-                    deamon_health -= 5;
-                    mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
+                    deamon_health -= 5*k;
                     if (deamon_health <= 0) {
                         deamon_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
+
 
                 }
                 if ((abs(fy) == 1 || abs(fy) == -1 || abs(fy) == 0) &&
                     (abs(fx) == 1 || abs(fx) == -1 || abs(fx) == 0)) {
-                    fire_health -= 5;
-                    mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
+                    fire_health -= 5*k;
                     if (fire_health <= 0) {
                         fire_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
+
 
                 }
                 if ((abs(sy) == 1 || abs(sy) == -1 || abs(sy) == 0) &&
                     (abs(sx) == 1 || abs(sx) == -1 || abs(sx) == 0)) {
-                    snake_health -= 5;
-                    mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
+                    snake_health -= 5*k;
                     if (snake_health <= 0) {
                         snake_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
 
                 }
             }
             if(in_use_weapon==5){
                 if ((abs(dy) == 1 || abs(dy) == -1 || abs(dy) == 0) &&
                     (abs(dx) == 1 || abs(dx) == -1 || abs(dx) == 0)) {
-                    deamon_health -= 10;
-                    mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
+                    deamon_health -= 10*k;
                     if (deamon_health <= 0) {
                         deamon_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
 
                 }
                 if ((abs(fy) == 1 || abs(fy) == -1 || abs(fy) == 0) &&
                     (abs(fx) == 1 || abs(fx) == -1 || abs(fx) == 0)) {
-                    fire_health -= 10;
-                    mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
+                    fire_health -= 10*k;
                     if (fire_health <= 0) {
                         fire_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
+
 
                 }
                 if ((abs(sy) == 1 || abs(sy) == -1 || abs(sy) == 0) &&
                     (abs(sx) == 1 || abs(sx) == -1 || abs(sx) == 0)) {
-                    snake_health -= 10;
-                    mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
+                    snake_health -= 10*k;
                     if (snake_health <= 0) {
                         snake_health = 0;
                     }
+                    mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
 
                 }
             }
         }
 
-///////////dagger
+        ///////////dagger
         if(in_use_weapon == 2 && previous_c == 'p') {
             start_dagger = 1;
             xfor2 = new_x;
@@ -6136,19 +6935,19 @@ int easy_game_f4(struct user *current_user) {
         if(start_dagger == 1 && counterfor2 > 0) {
 
             if(xfor2 == new_x_f && yfor2 == new_y_f) {
-                fire_health -= 10;
+                fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
                 counterfor2=0;
             }
             if(xfor2 == new_x_s && yfor2 == new_y_s) {
-                snake_health -= 10;
+                snake_health -= 10*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
                 counterfor2=0;
             }
             if(xfor2 == xd && yfor2 == yd) {
-                deamon_health -= 10;
+                deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
                 mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
                 counterfor2=0;
@@ -6156,19 +6955,50 @@ int easy_game_f4(struct user *current_user) {
 
             if(da==1) {
                 xfor2--;
+                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
+                    counterfor2=0;
+                    if(map[yfor2][xfor2+1]=='.')
+                    {
+                        map[yfor2][xfor2+1]='z';
+                    }
+                }
             }
             else if(ds==1) {
                 yfor2++;
+                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
+                    counterfor2=0;
+                    if(map[yfor2-1][xfor2]=='.')
+                    {
+                        map[yfor2-1][xfor2]='z';
+                    }
+                }
             }
             else if(dd==1) {
                 xfor2++;
+                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
+                    counterfor2=0;
+                    if(map[yfor2][xfor2-1]=='.')
+                    {
+                        map[yfor2][xfor2-1]='z';
+                    }
+                }
             }
             else if(dw==1) {
                 yfor2--;
+                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
+                    counterfor2=0;
+                    if(map[yfor2+1][xfor2]=='.')
+                    {
+                        map[yfor2+1][xfor2]='z';
+                    }
+                }
             }
 
             counterfor2++;
             if(counterfor2 >= 5) {
+                if(map[yfor2][xfor2]=='.'){
+                    map[yfor2][xfor2]='z'; // z represents 1 dagger
+                }
                 start_dagger = 0;
                 counterfor2 = 0;
                 dd=0; da=0; dw=0; ds=0;
@@ -6179,10 +7009,10 @@ int easy_game_f4(struct user *current_user) {
             mvprintw(3, 3, "                                                            ");
             refresh();
         }
-////////////
+        ////////////
 
 
-///////////normal arrow
+        ///////////normal arrow
         if(in_use_weapon == 4 && previous_c == 'p') {
             start_normal_arrow = 1;
             xfor4 = new_x;
@@ -6208,19 +7038,19 @@ int easy_game_f4(struct user *current_user) {
         if(start_normal_arrow == 1 && counterfor4 > 0) {
 
             if(xfor4 == new_x_f && yfor4 == new_y_f) {
-                fire_health -= 10;
+                fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
                 counterfor4=0;
             }
             if(xfor4 == new_x_s && yfor2 == new_y_s) {
-                snake_health -= 10;
+                snake_health -= 10*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
                 counterfor4=0;
             }
             if(xfor4 == xd && yfor4== yd) {
-                deamon_health -= 10;
+                deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
                 mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
                 counterfor4=0;
@@ -6228,19 +7058,50 @@ int easy_game_f4(struct user *current_user) {
 
             if(na==1) {
                 xfor4--;
+                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
+                    counterfor4=0;
+                    if(map[yfor4][xfor4+1]=='.')
+                    {
+                        map[yfor4][xfor4+1]='c';
+                    }
+                }
             }
             else if(ns==1) {
                 yfor4++;
+                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
+                    counterfor4=0;
+                    if(map[yfor4-1][xfor4]=='.')
+                    {
+                        map[yfor4-1][xfor4]='c';
+                    }
+                }
             }
             else if(nd==1) {
                 xfor4++;
+                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
+                    counterfor4=0;
+                    if(map[yfor4][xfor4-1]=='.')
+                    {
+                        map[yfor4][xfor4-1]='c';
+                    }
+                }
             }
             else if(nw==1) {
                 yfor4--;
+                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
+                    counterfor4=0;
+                    if(map[yfor4+1][xfor4]=='.')
+                    {
+                        map[yfor4+1][xfor4]='c';
+                    }
+                }
             }
 
             counterfor4++;
             if(counterfor4 >= 5) {
+                if(map[yfor4][xfor4]=='.'){
+                    map[yfor4][xfor4]='c'; // c represents 1 normal arrow
+                }
                 start_normal_arrow = 0;
                 counterfor4 = 0;
                 nd=0; na=0; nw=0; ns=0;
@@ -6248,13 +7109,12 @@ int easy_game_f4(struct user *current_user) {
             if(map[yfor4][xfor4]=='.'){
                 mvaddch(yfor4, xfor4, '-');
             }
-            mvprintw(3, 3, "                                                            ");
 
             refresh();
         }
-////////////
+        ////////////
 
-///////////Magic wand
+        ///////////Magic wand
         if(in_use_weapon == 3 && previous_c == 'p') {
             start_magic_wand = 1;
             xfor3 = new_x;
@@ -6280,20 +7140,20 @@ int easy_game_f4(struct user *current_user) {
         if(start_magic_wand == 1 && counterfor3 > 0) {
 
             if(xfor3 == new_x_f && yfor3 == new_y_f) {
-                fire_health -= 10;
+                fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
                 counterfor3=0;
             }
             if(xfor3 == new_x_s && yfor3 == new_y_s) {
-                snake_health -= 10;
+                snake_health -= 10*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
                 counterfor3=0;
                 snake_chase=0;
             }
             if(xfor3 == xd && yfor3 == yd) {
-                deamon_health -= 10;
+                deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
                 mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
                 counterfor3=0;
@@ -6301,19 +7161,50 @@ int easy_game_f4(struct user *current_user) {
 
             if(ma==1) {
                 xfor3--;
+                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
+                    counterfor3=0;
+                    if(map[yfor3][xfor3+1]=='.')
+                    {
+                        map[yfor3][xfor3+1]='x';
+                    }
+                }
             }
             else if(ms==1) {
                 yfor3++;
+                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
+                    counterfor3=0;
+                    if(map[yfor3-1][xfor3+1]=='.')
+                    {
+                        map[yfor3-1][xfor3+1]='x';
+                    }
+                }
             }
             else if(md==1) {
                 xfor3++;
+                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
+                    counterfor3=0;
+                    if(map[yfor3][xfor3-1]=='.')
+                    {
+                        map[yfor3][xfor3-1]='x';
+                    }
+                }
             }
             else if(mw==1) {
                 yfor3--;
+                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
+                    counterfor3=0;
+                    if(map[yfor3+1][xfor3]=='.')
+                    {
+                        map[yfor3+1][xfor3]='x';
+                    }
+                }
             }
 
             counterfor3++;
             if(counterfor3 >= 5) {
+                if(map[yfor3][xfor3]=='.'){
+                    map[yfor3][xfor3]='x'; // x represents 1 magic wand
+                }
                 start_magic_wand = 0;
                 counterfor3 = 0;
                 md=0; ma=0; mw=0; ms=0;
@@ -6324,7 +7215,8 @@ int easy_game_f4(struct user *current_user) {
             mvprintw(2, 3, "                                                            ");
             refresh();
         }
-////////////
+        ////////////
+
 
         if(locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
                                                                    new_y-1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
@@ -6371,14 +7263,28 @@ int easy_game_f4(struct user *current_user) {
             }
             else if(no_lock==1){
                 locked[cordinate_locked[0]][cordinate_locked[1]]=2;
-                mvprintw(5,3,"The door is unlocked !                                       ");
-                mvprintw(4,3,"                                                            ");
+                mvprintw(3,3,"The door is unlocked !                                       ");
+                mvprintw(3,3,"                                                            ");
             }
 
 
         }
         if(counter==40){
             strcpy(password,"0");
+        }
+        if(food==10){
+            if(food4health_counter==2){
+                if(current_user->spells.health_spell_counter>0){
+                    health+=2;
+                    current_user->spells.health_spell_counter-=1;
+                    if(current_user->spells.health_spell_counter<0) current_user->spells.health_spell_counter=0;
+                }
+                else{
+                    health+=1;
+                }
+                if(health>10) health=10;
+                food4health_counter=0;
+            }
         }
 
         //health
@@ -6456,7 +7362,10 @@ int easy_game_f4(struct user *current_user) {
             current_user->total_gold+=current_user->new_golds;
             return 1;
         }
+        previous_x = new_x;
+        previous_y = new_y;
         previous_c =c;
+        food4health_counter++;
 
     } while ((c = getch()) != 27);
 
