@@ -80,6 +80,12 @@ typedef struct weapons{
     int in_use_weapon;
 }weapons;
 
+typedef struct spell{
+    int health_spell;
+    int speed_spell;
+    int damage_spell;
+}spells;
+
 typedef struct game{
    char username[100];
    int music;
@@ -100,6 +106,7 @@ typedef struct user{
     int food1;
     int new_golds;
     struct weapons weapons;
+    struct spell spells;
 }user;
 
 
@@ -118,6 +125,7 @@ int easy_game_f3(struct user *current_user);
 int easy_game_f4(struct user *current_user);
 int food_bar(int* food1, int* health , int* food);
 int weapon(struct user *current_user);
+int spell(struct user *current_user);
 int pre_leaderboard(struct user *current_user);
 int lose(struct user *current_user);
 int victory(struct user *current_user);
@@ -896,7 +904,10 @@ int food_bar(int* food1,int* health,int* food){
                         *food1=0;
                     }
                     else{
-                        *health = 10;
+                        *health = *health+3;
+                        if(*health>10){
+                            *health=10;
+                        }
                         *food = 10;
                         *food1=*food1-1;
                     }
@@ -1127,6 +1138,10 @@ int easy_game(struct user *current_user) {
     current_user->weapons.Magic_Wand=0;
     current_user->weapons.Normal_Arrow=0;
     current_user->weapons.Sword=0;
+    current_user->spells.damage_spell=0;
+    current_user->spells.health_spell=0;
+    current_user->spells.speed_spell=0;
+
     int in_use_weapon=0;
 
 
@@ -1647,6 +1662,7 @@ int easy_game(struct user *current_user) {
             is_sth_here[j][i]=0;
         }
     }
+    int food4health_counter=0;
 
     do {
         //print map
@@ -1690,16 +1706,16 @@ int easy_game(struct user *current_user) {
                         attroff(COLOR_PAIR(9));
                      //mvprintw(i, j, "%lc", (wint_t)0x2692); // ⚒
                     }
-                    else if(map[i][j]=='2') {
+                    else if(map[i][j]=='2' || map[i][j]=='z') {
                         mvprintw(i, j, "%lc", (wint_t)0x1F5E1); // 🗡 ok
                     }
-                    else if(map[i][j]=='3') {
+                    else if(map[i][j]=='3' || map[i][j]=='x') {
                         attron(COLOR_PAIR(9));
                         mvaddch(i, j, 'W');
                         attroff(COLOR_PAIR(9));
                     // mvprintw(i, j, "%lc", (wint_t)0x1FA84); // 🪄
                     }
-                    else if(map[i][j]=='4') {
+                    else if(map[i][j]=='4' || map[i][j]=='c') {
                         mvprintw(i, j, "%lc", (wint_t)0x27B3); // ➳ ok
                     }
                     else if(map[i][j]=='5') {
@@ -1763,7 +1779,9 @@ int easy_game(struct user *current_user) {
         if( (map[new_y][new_x] == '+' && (locked[new_y][new_x]==0 || locked[new_y][new_x]==2)) || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '.' ||
            map[new_y][new_x] == '#'  || map[new_y][new_x] == 'F' || map[new_y][new_x]=='T' || map[new_y][new_x]=='^' ||
            map[new_y][new_x] == '1'  || map[new_y][new_x] == '2' || map[new_y][new_x]=='3' || map[new_y][new_x]=='4' ||
-           map[new_y][new_x] == '5' || map[new_y][new_x]=='=' || map[new_y][new_x]=='/') {
+           map[new_y][new_x] == '5'  || map[new_y][new_x]=='=' || map[new_y][new_x]=='/' || map[new_y][new_x]=='z'||
+           map[new_y][new_x] == 'x'  || map[new_y][new_x] == 'c') {
+
 
 
             if(map[new_y][new_x]=='/'){
@@ -1816,20 +1834,40 @@ int easy_game(struct user *current_user) {
 
             if(map[new_y][new_x] == '2'){
                 current_user->weapons.Dagger=1;
-                mvprintw(2,3,"You found a Dagger!                  ");
+                mvprintw(2,3,"You found a Dagger! +10                  ");
                 current_user->weapons.Dagger_count+=10;
             }
+            if(map[new_y][new_x] == 'z'){
+                current_user->weapons.Dagger=1;
+                mvprintw(2,3,"You found a Dagger! +1                  ");
+                current_user->weapons.Dagger_count+=1;
+            }
+
 
             if(map[new_y][new_x] == '3'){
                 current_user->weapons.Magic_Wand=1;
-                mvprintw(2,3,"You found a Magic Wand!              ");
+                mvprintw(2,3,"You found a Magic Wand! +8             ");
                 current_user->weapons.Magic_Wand_count+=8;
             }
+            if(map[new_y][new_x] == 'x'){
+                current_user->weapons.Magic_Wand=1;
+                mvprintw(2,3,"You found a Magic Wand! +1             ");
+                current_user->weapons.Magic_Wand_count+=1;
+            }
+
+
             if(map[new_y][new_x] == '4'){
                 current_user->weapons.Normal_Arrow=1;
-                mvprintw(2,3,"You found a Normal Arrow!           ");
+                mvprintw(2,3,"You found a Normal Arrow! +20          ");
                 current_user->weapons.Normal_Arrow_count+=20;
             }
+            if(map[new_y][new_x] == 'c'){
+                current_user->weapons.Normal_Arrow=1;
+                mvprintw(2,3,"You found a Normal Arrow! +1          ");
+                current_user->weapons.Normal_Arrow_count+=1;
+            }
+
+
             if(map[new_y][new_x] == '5'){
                 current_user->weapons.Sword=1;
                 mvprintw(2,3,"You found a Sword!                   ");
@@ -1961,7 +1999,7 @@ int easy_game(struct user *current_user) {
 
 
 
-        mvprintw(5,3,"                                                                ");
+        mvprintw(3,3,"                                                                ");
         int dx = xd - new_x;
         int dy = yd - new_y;
         fx = new_x_f -  new_x;
@@ -2076,19 +2114,50 @@ int easy_game(struct user *current_user) {
 
             if(da==1) {
                 xfor2--;
+                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='-'){
+                    counterfor2=0;
+                    if(map[yfor2][xfor2+1]=='.')
+                    {
+                        map[yfor2][xfor2+1]='z';
+                    }
+                }
             }
             else if(ds==1) {
                 yfor2++;
+                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='-'){
+                    counterfor2=0;
+                    if(map[yfor2-1][xfor2]=='.')
+                    {
+                        map[yfor2-1][xfor2]='z';
+                    }
+                }
             }
             else if(dd==1) {
                 xfor2++;
+                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='-'){
+                    counterfor2=0;
+                    if(map[yfor2][xfor2-1]=='.')
+                    {
+                        map[yfor2][xfor2-1]='z';
+                    }
+                }
             }
             else if(dw==1) {
                 yfor2--;
+                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='-'){
+                    counterfor2=0;
+                    if(map[yfor2+1][xfor2]=='.')
+                    {
+                        map[yfor2+1][xfor2]='z';
+                    }
+                }
             }
 
             counterfor2++;
             if(counterfor2 >= 5) {
+                if(map[yfor2][xfor2]=='.'){
+                    map[yfor2][xfor2]='z'; // z represents 1 dagger
+                }
                 start_dagger = 0;
                 counterfor2 = 0;
                 dd=0; da=0; dw=0; ds=0;
@@ -2148,19 +2217,50 @@ int easy_game(struct user *current_user) {
 
             if(na==1) {
                 xfor4--;
+                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='-'){
+                    counterfor4=0;
+                    if(map[yfor4][xfor4+1]=='.')
+                    {
+                        map[yfor4][xfor4+1]='c';
+                    }
+                }
             }
             else if(ns==1) {
                 yfor4++;
+                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='-'){
+                    counterfor4=0;
+                    if(map[yfor4-1][xfor4]=='.')
+                    {
+                        map[yfor4-1][xfor4]='c';
+                    }
+                }
             }
             else if(nd==1) {
                 xfor4++;
+                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='-'){
+                    counterfor4=0;
+                    if(map[yfor4][xfor4-1]=='.')
+                    {
+                        map[yfor4][xfor4-1]='c';
+                    }
+                }
             }
             else if(nw==1) {
                 yfor4--;
+                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='-'){
+                    counterfor4=0;
+                    if(map[yfor4+1][xfor4]=='.')
+                    {
+                        map[yfor4+1][xfor4]='c';
+                    }
+                }
             }
 
             counterfor4++;
             if(counterfor4 >= 5) {
+                if(map[yfor4][xfor4]=='.'){
+                    map[yfor4][xfor4]='c'; // c represents 1 normal arrow
+                }
                 start_normal_arrow = 0;
                 counterfor4 = 0;
                 nd=0; na=0; nw=0; ns=0;
@@ -2168,7 +2268,6 @@ int easy_game(struct user *current_user) {
             if(map[yfor4][xfor4]=='.'){
                 mvaddch(yfor4, xfor4, '-');
             }
-            mvprintw(3, 3, "                                                            ");
 
             refresh();
         }
@@ -2221,19 +2320,50 @@ int easy_game(struct user *current_user) {
 
             if(ma==1) {
                 xfor3--;
+                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='-'){
+                    counterfor3=0;
+                    if(map[yfor3][xfor3+1]=='.')
+                    {
+                        map[yfor3][xfor3+1]='x';
+                    }
+                }
             }
             else if(ms==1) {
                 yfor3++;
+                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='-'){
+                    counterfor3=0;
+                    if(map[yfor3-1][xfor3+1]=='.')
+                    {
+                        map[yfor3-1][xfor3+1]='x';
+                    }
+                }
             }
             else if(md==1) {
                 xfor3++;
+                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='-'){
+                    counterfor3=0;
+                    if(map[yfor3][xfor3-1]=='.')
+                    {
+                        map[yfor3][xfor3-1]='x';
+                    }
+                }
             }
             else if(mw==1) {
                 yfor3--;
+                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='-'){
+                    counterfor3=0;
+                    if(map[yfor3+1][xfor3]=='.')
+                    {
+                        map[yfor3+1][xfor3]='x';
+                    }
+                }
             }
 
             counterfor3++;
             if(counterfor3 >= 5) {
+                if(map[yfor3][xfor3]=='.'){
+                    map[yfor3][xfor3]='x'; // x represents 1 magic wand
+                }
                 start_magic_wand = 0;
                 counterfor3 = 0;
                 md=0; ma=0; mw=0; ms=0;
@@ -2245,19 +2375,6 @@ int easy_game(struct user *current_user) {
             refresh();
         }
         ////////////
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
         if(locked[cordinate_locked[0]][cordinate_locked[1]]==1 && (new_y+1==cordinate_locked[0] && new_x==cordinate_locked[1] ||
@@ -2313,6 +2430,14 @@ int easy_game(struct user *current_user) {
         }
         if(counter==40){
             strcpy(password,"0");
+        }
+
+        if(food==10){
+            if(food4health_counter==2){
+                health+=1;
+                if(health>10) health=10;
+                food4health_counter=0;
+            }
         }
 
 
@@ -2403,6 +2528,7 @@ int easy_game(struct user *current_user) {
         previous_x = new_x;
         previous_y = new_y;
         previous_c =c;
+        food4health_counter++;
 
     } while ((c = getch()) != 27);
 
