@@ -1220,7 +1220,7 @@ int spell(struct user *current_user){
 
         mvprintw(center_y, center_x, selected == 0 ? "> Health Spell   count: %d" : "  Health Spell   count: %d",current_user->spells.health_spell);
         attron(COLOR_PAIR(1));
-        mvprintw(center_y,center_x-2, "%lc", (wint_t)0x2295);
+        mvprintw(center_y, center_x-2, "%lc", (wint_t)0x271A);
         attroff(COLOR_PAIR(1));
 
         mvprintw(center_y+2, center_x, selected == 1 ? "> Speed Spell   count: %d" : "  Speed Spell   count: %d",current_user->spells.speed_spell);
@@ -1229,9 +1229,11 @@ int spell(struct user *current_user){
         attroff(COLOR_PAIR(2));
 
         mvprintw(center_y+4, center_x, selected == 2 ? "> Damage Spell   count: %d" : "  Damage Spell   count: %d",current_user->spells.damage_spell);
-        attron(COLOR_PAIR(3));
-        mvprintw(center_y+4,center_x-2, "%lc", (wint_t)0x16ED);
-        attroff(COLOR_PAIR(3));
+        init_color(24, 1000, 200, 0);
+        init_pair(45,24,COLOR_BLACK);
+        attron(COLOR_PAIR(45));
+        mvprintw(center_y+4,center_x-2, "%lc", (wint_t) 0x23FA);
+        attroff(COLOR_PAIR(45));
 
         mvprintw(center_y+8, center_x-4, "************* ************* *************");
 
@@ -1331,6 +1333,13 @@ int game_f1(struct user *current_user, int level) {
             cori_number[j][i]=0;
         }
     }
+
+//    int hidden_door[max_y][max_x];
+//    for(int j=0;j<max_y;j++){
+//        for(int i=0;i<max_x;i++){
+//            hidden_door[j][i]=0;
+//        }
+//    }
 
 
     ///.........weapons
@@ -1534,6 +1543,37 @@ int game_f1(struct user *current_user, int level) {
     }
 
     //////////////////////
+
+
+    //hidden door
+//    int hidden; int hx; int hy;
+//    while (!hidden){
+//        hy = rand() % max_y  + 1;
+//        hx = rand() % max_x  + 1;
+//        int doornum=0;
+//        for(int j=0;j<max_y;j++){
+//            for(int i=0;i<max_x;i++){
+//                if(room_number[j][i]==room_number[hy][hx]){
+//                    if(map[j][i]=='+'){
+//                        doornum++;
+//                    }
+//                }
+//            }
+//        }
+//        if(doornum==1){
+//            if(map[hy][hx]=='+'){
+//                hidden_door[hy][hx]=1;
+//                hidden++;
+//            }
+//        }
+//    }
+//
+//    int verorho;
+//    if(map[hy+1][hx]=='|' && map[hy-1][hx]=='|'){
+//        verorho=1;
+//    }else{
+//        verorho=0;
+//    }
 
     //pillars
     int num_pillars= 6+ (rand() % 4);
@@ -1760,7 +1800,7 @@ int game_f1(struct user *current_user, int level) {
     while(!lock){
         int y4=rand()%max_y;
         int x4=rand()%max_x;
-        if(map[y4][x4]=='+' && map[y4+1][x4]!='+' && map[y4-1][x4]!='+' && map[y4][x4+1]!='+' && map[y4][x4-1]!='+'){
+        if(map[y4][x4]=='+' && map[y4+1][x4]!='+' && map[y4-1][x4]!='+' && map[y4][x4+1]!='+' && map[y4][x4-1]!='+' ){
             int count=0;
             locked_room_num=room_number[y4][x4];
             for(int j=0;j<max_y;j++){
@@ -1970,16 +2010,16 @@ int game_f1(struct user *current_user, int level) {
         for(int i = 0; i < max_y; i++) {
             for(int j = 0; j < max_x; j++) {
                 if(map[i][j] != ' ' && visited[i][j]==1) {
-
-                    if (map[i][j] == '|'){
-                        if(room_number[i][j] == colored_room1 || room_number[i][j] == colored_room2) {
+//                    if (map[i][j] == '|' || hidden_door[i][j]==1 && verorho==1){
+                    if (map[i][j] == '|' ){
+                        if((room_number[i][j] == colored_room1 || room_number[i][j] == colored_room2) ) {
                             attron(COLOR_PAIR(41));
-                            mvaddch(i, j, map[i][j]);
+                            mvaddch(i, j, '|');
                             attroff(COLOR_PAIR(41));
                         }
                         else{
                             attron(COLOR_PAIR(5));
-                            mvaddch(i, j, map[i][j]);
+                            mvaddch(i, j, '|');
                             attroff(COLOR_PAIR(5));
                         }
                     } else if (map[i][j] == '.' &&
@@ -1990,11 +2030,11 @@ int game_f1(struct user *current_user, int level) {
                     } else if (map[i][j] == '_'){
                         if(room_number[i][j] == colored_room1 || room_number[i][j] == colored_room2) {
                             attron(COLOR_PAIR(41));
-                            mvaddch(i, j, map[i][j]);
+                            mvaddch(i, j, '_');
                             attroff(COLOR_PAIR(41));
                         }
                         else{
-                            mvaddch(i, j, map[i][j]);
+                            mvaddch(i, j, '_');
                         }
                     } else if (map[i][j] == 'O'){
                         if(room_number[i][j] == colored_room1 || room_number[i][j] == colored_room2) {
@@ -2016,9 +2056,11 @@ int game_f1(struct user *current_user, int level) {
                         mvprintw(i, j, "%lc", (wint_t) 0x25C6);
                         attroff(COLOR_PAIR(6));
                     } else if (map[i][j] == '@') {
-                        attron(COLOR_PAIR(43));
+                        init_color(21, 1000, 400, 1000);
+                        init_pair(44,21,COLOR_BLACK);
+                        attron(COLOR_PAIR(44));
                         mvprintw(i, j, "%lc", (wint_t) 0x25C6);
-                        attroff(COLOR_PAIR(43));
+                        attroff(COLOR_PAIR(44));
                     } else if (map[i][j] == 'F') {
                         attron(COLOR_PAIR(8));
                         mvaddch(i, j, map[i][j]);
@@ -2057,24 +2099,26 @@ int game_f1(struct user *current_user, int level) {
                         mvaddch(i, j, '@');
                         attroff(COLOR_PAIR(11));
                     } else if (map[i][j] == '=') {
-                        mvprintw(i, j, "%lc", (wint_t) 0x23F9);
+//                        mvprintw(i, j, "%lc", (wint_t) 0x23F9);
+                          mvaddch(i, j, '&');
                     } else if (map[i][j] == '/') {
                         attron(COLOR_PAIR(6));
                         mvprintw(i, j, "%lc", (wint_t) 0x25B3);
                         attroff(COLOR_PAIR(6));
                     } else if (map[i][j] == 'b') { //health spell
                         attron(COLOR_PAIR(10));
-                        mvprintw(i, j, "%lc", (wint_t) 0x2295);
+                        mvprintw(i, j, "%lc", (wint_t)0x271A);
                         attroff(COLOR_PAIR(10));
                     } else if (map[i][j] == 'n') { //speed spell
                         attron(COLOR_PAIR(6));
                         mvprintw(i, j, "%lc", (wint_t) 0x27A4);
                         attroff(COLOR_PAIR(6));
-
                     } else if (map[i][j] == 'm') { //damage spell
-                        attron(COLOR_PAIR(11));
-                        mvprintw(i, j, "%lc", (wint_t) 0x16ED);
-                        attroff(COLOR_PAIR(11));
+                        init_color(24, 1000, 200, 0);
+                        init_pair(45,24,COLOR_BLACK);
+                        attron(COLOR_PAIR(45));
+                        mvprintw(i, j, "%lc", (wint_t) 0x23FA);
+                        attroff(COLOR_PAIR(45));
                     }
                     else if (map[i][j] == '+'){
                         if(room_number[i][j] == colored_room1 || room_number[i][j] == colored_room2) {
@@ -2150,7 +2194,6 @@ int game_f1(struct user *current_user, int level) {
             k=1;
         }
         mvprintw(2,100,"[h] to open help menu");
-
 
 
 
@@ -3710,11 +3753,14 @@ int game_f2(struct user *current_user , int level) {
                         attron(COLOR_PAIR(6));
                         mvprintw(i, j, "%lc", (wint_t) 0x25C6);
                         attroff(COLOR_PAIR(6));
-                    } else if (map[i][j] == '@') {
-                        attron(COLOR_PAIR(43));
+                    }else if (map[i][j] == '@') {
+                        init_color(21, 1000, 400, 1000);
+                        init_pair(44,21,COLOR_BLACK);
+                        attron(COLOR_PAIR(44));
                         mvprintw(i, j, "%lc", (wint_t) 0x25C6);
-                        attroff(COLOR_PAIR(43));
-                    } else if (map[i][j] == 'F') {
+                        attroff(COLOR_PAIR(44));
+                    }
+                    else if (map[i][j] == 'F') {
                         attron(COLOR_PAIR(8));
                         mvaddch(i, j, map[i][j]);
                         attroff(COLOR_PAIR(8));
@@ -3751,25 +3797,28 @@ int game_f2(struct user *current_user , int level) {
                         attron(COLOR_PAIR(11));
                         mvaddch(i, j, '@');
                         attroff(COLOR_PAIR(11));
-                    } else if (map[i][j] == '=') {
-                        mvprintw(i, j, "%lc", (wint_t) 0x23F9);
+                    }
+                    else if (map[i][j] == '=') {
+//                        mvprintw(i, j, "%lc", (wint_t) 0x23F9);
+                        mvaddch(i, j, '&');
                     } else if (map[i][j] == '/') {
                         attron(COLOR_PAIR(6));
                         mvprintw(i, j, "%lc", (wint_t) 0x25B3);
                         attroff(COLOR_PAIR(6));
                     } else if (map[i][j] == 'b') { //health spell
                         attron(COLOR_PAIR(10));
-                        mvprintw(i, j, "%lc", (wint_t) 0x2295);
+                        mvprintw(i, j, "%lc", (wint_t)0x271A);
                         attroff(COLOR_PAIR(10));
                     } else if (map[i][j] == 'n') { //speed spell
                         attron(COLOR_PAIR(6));
                         mvprintw(i, j, "%lc", (wint_t) 0x27A4);
                         attroff(COLOR_PAIR(6));
-
                     } else if (map[i][j] == 'm') { //damage spell
-                        attron(COLOR_PAIR(11));
-                        mvprintw(i, j, "%lc", (wint_t) 0x16ED);
-                        attroff(COLOR_PAIR(11));
+                        init_color(24, 1000, 200, 0);
+                        init_pair(45,24,COLOR_BLACK);
+                        attron(COLOR_PAIR(45));
+                        mvprintw(i, j, "%lc", (wint_t) 0x23FA);
+                        attroff(COLOR_PAIR(45));
                     }
                     else if (map[i][j] == '+'){
                         if(room_number[i][j] == colored_room1 || room_number[i][j] == colored_room2) {
@@ -4826,6 +4875,14 @@ int game_f3(struct user *current_user , int level) {
             cori_number[j][i]=0;
         }
     }
+
+//    int hidden_door[max_y][max_x];
+//    for(int j=0;j<max_y;j++){
+//        for(int i=0;i<max_x;i++){
+//            hidden_door[j][i]=0;
+//        }
+//    }
+
     ///.........weapons
 
     int in_use_weapon= current_user->weapons.in_use_weapon;
@@ -5015,6 +5072,36 @@ int game_f3(struct user *current_user , int level) {
     }
 
     //////////////////////
+    //hidden door
+//    int hidden; int hx; int hy;
+//    while (!hidden){
+//        hy = rand() % max_y  + 1;
+//        hx = rand() % max_x  + 1;
+//        int doornum=0;
+//        for(int j=0;j<max_y;j++){
+//            for(int i=0;i<max_x;i++){
+//                if(room_number[j][i]==room_number[hy][hx]){
+//                    if(map[j][i]=='+'){
+//                        doornum++;
+//                    }
+//                }
+//            }
+//        }
+//        if(doornum==1){
+//            if(map[hy][hx]=='+'){
+//                hidden_door[hy][hx]=1;
+//                hidden++;
+//            }
+//        }
+//    }
+//
+//    int verorho;
+//    if(map[hy+1][hx]=='|' && map[hy-1][hx]=='|'){
+//        verorho=1;
+//    }else{
+//        verorho=0;
+//    }
+
 
     //pillars
     int num_pillars= 6+ (rand() % 4);
@@ -5416,15 +5503,16 @@ int game_f3(struct user *current_user , int level) {
             for(int j = 0; j < max_x; j++) {
                 if(map[i][j] != ' ' && visited[i][j]==1) {
 
-                    if (map[i][j] == '|'){
-                        if(room_number[i][j] == colored_room1 || room_number[i][j] == colored_room2) {
+
+                    if (map[i][j] == '|' ){
+                        if((room_number[i][j] == colored_room1 || room_number[i][j] == colored_room2) ) {
                             attron(COLOR_PAIR(41));
-                            mvaddch(i, j, map[i][j]);
+                            mvaddch(i, j, '|');
                             attroff(COLOR_PAIR(41));
                         }
                         else{
                             attron(COLOR_PAIR(5));
-                            mvaddch(i, j, map[i][j]);
+                            mvaddch(i, j, '|');
                             attroff(COLOR_PAIR(5));
                         }
                     } else if (map[i][j] == '.' &&
@@ -5432,16 +5520,17 @@ int game_f3(struct user *current_user , int level) {
                         attron(COLOR_PAIR(40));
                         mvaddch(i, j, map[i][j]);
                         attroff(COLOR_PAIR(40));
-                    } else if (map[i][j] == '_'){
+                    } else if (map[i][j] == '_' ){
                         if(room_number[i][j] == colored_room1 || room_number[i][j] == colored_room2) {
                             attron(COLOR_PAIR(41));
-                            mvaddch(i, j, map[i][j]);
+                            mvaddch(i, j, '_');
                             attroff(COLOR_PAIR(41));
                         }
                         else{
-                            mvaddch(i, j, map[i][j]);
+                            mvaddch(i, j, '_');
                         }
-                    } else if (map[i][j] == 'O'){
+                    }
+                    else if (map[i][j] == 'O'){
                         if(room_number[i][j] == colored_room1 || room_number[i][j] == colored_room2) {
                             attron(COLOR_PAIR(41));
                             mvaddch(i, j, map[i][j]);
@@ -5461,10 +5550,13 @@ int game_f3(struct user *current_user , int level) {
                         mvprintw(i, j, "%lc", (wint_t) 0x25C6);
                         attroff(COLOR_PAIR(6));
                     } else if (map[i][j] == '@') {
-                        attron(COLOR_PAIR(43));
+                        init_color(21, 1000, 400, 1000);
+                        init_pair(44,21,COLOR_BLACK);
+                        attron(COLOR_PAIR(44));
                         mvprintw(i, j, "%lc", (wint_t) 0x25C6);
-                        attroff(COLOR_PAIR(43));
-                    } else if (map[i][j] == 'F') {
+                        attroff(COLOR_PAIR(44));
+                    }
+                    else if (map[i][j] == 'F') {
                         attron(COLOR_PAIR(8));
                         mvaddch(i, j, map[i][j]);
                         attroff(COLOR_PAIR(8));
@@ -5501,26 +5593,33 @@ int game_f3(struct user *current_user , int level) {
                         attron(COLOR_PAIR(11));
                         mvaddch(i, j, '@');
                         attroff(COLOR_PAIR(11));
-                    } else if (map[i][j] == '=') {
-                        mvprintw(i, j, "%lc", (wint_t) 0x23F9);
+                    }
+
+
+                    else if (map[i][j] == '=') {
+//                        mvprintw(i, j, "%lc", (wint_t) 0x23F9);
+                        mvaddch(i, j, '&');
                     } else if (map[i][j] == '/') {
                         attron(COLOR_PAIR(6));
                         mvprintw(i, j, "%lc", (wint_t) 0x25B3);
                         attroff(COLOR_PAIR(6));
                     } else if (map[i][j] == 'b') { //health spell
                         attron(COLOR_PAIR(10));
-                        mvprintw(i, j, "%lc", (wint_t) 0x2295);
+                        mvprintw(i, j, "%lc", (wint_t)0x271A);
                         attroff(COLOR_PAIR(10));
                     } else if (map[i][j] == 'n') { //speed spell
                         attron(COLOR_PAIR(6));
                         mvprintw(i, j, "%lc", (wint_t) 0x27A4);
                         attroff(COLOR_PAIR(6));
-
                     } else if (map[i][j] == 'm') { //damage spell
-                        attron(COLOR_PAIR(11));
-                        mvprintw(i, j, "%lc", (wint_t) 0x16ED);
-                        attroff(COLOR_PAIR(11));
-                    } else if (map[i][j] == '+'){
+                        init_color(24, 1000, 200, 0);
+                        init_pair(45,24,COLOR_BLACK);
+                        attron(COLOR_PAIR(45));
+                        mvprintw(i, j, "%lc", (wint_t) 0x23FA);
+                        attroff(COLOR_PAIR(45));
+                    }
+
+                    else if (map[i][j] == '+'){
                         if(room_number[i][j] == colored_room1 || room_number[i][j] == colored_room2) {
                             attron(COLOR_PAIR(41));
                             mvaddch(i, j, map[i][j]);
@@ -5595,6 +5694,10 @@ int game_f3(struct user *current_user , int level) {
         } else {
             k=1;
         }
+
+//        if(new_x+1==hx && new_y==hy || new_x-1==hx && new_y==hy || new_x==hx && new_y+1==hy || new_x==hx && new_y-1==hy){
+//            hidden_door[hy][hx]=0;
+//        }
 
 
 
@@ -7266,10 +7369,13 @@ int game_f4(struct user *current_user, int level) {
                         mvprintw(i, j, "%lc", (wint_t) 0x25C6);
                         attroff(COLOR_PAIR(6));
                     } else if (map[i][j] == '@') {
-                        attron(COLOR_PAIR(43));
+                        init_color(21, 1000, 400, 1000);
+                        init_pair(44,21,COLOR_BLACK);
+                        attron(COLOR_PAIR(44));
                         mvprintw(i, j, "%lc", (wint_t) 0x25C6);
-                        attroff(COLOR_PAIR(43));
-                    } else if (map[i][j] == 'F') {
+                        attroff(COLOR_PAIR(44));
+                    }
+                    else if (map[i][j] == 'F') {
                         attron(COLOR_PAIR(8));
                         mvaddch(i, j, map[i][j]);
                         attroff(COLOR_PAIR(8));
@@ -7306,26 +7412,31 @@ int game_f4(struct user *current_user, int level) {
                         attron(COLOR_PAIR(11));
                         mvaddch(i, j, '@');
                         attroff(COLOR_PAIR(11));
-                    } else if (map[i][j] == '=') {
-                        mvprintw(i, j, "%lc", (wint_t) 0x23F9);
+                    }
+
+                    else if (map[i][j] == '=') {
+//                        mvprintw(i, j, "%lc", (wint_t) 0x23F9);
+                        mvaddch(i, j, '&');
                     } else if (map[i][j] == '/') {
                         attron(COLOR_PAIR(6));
                         mvprintw(i, j, "%lc", (wint_t) 0x25B3);
                         attroff(COLOR_PAIR(6));
                     } else if (map[i][j] == 'b') { //health spell
                         attron(COLOR_PAIR(10));
-                        mvprintw(i, j, "%lc", (wint_t) 0x2295);
+                        mvprintw(i, j, "%lc", (wint_t)0x271A);
                         attroff(COLOR_PAIR(10));
                     } else if (map[i][j] == 'n') { //speed spell
                         attron(COLOR_PAIR(6));
                         mvprintw(i, j, "%lc", (wint_t) 0x27A4);
                         attroff(COLOR_PAIR(6));
-
                     } else if (map[i][j] == 'm') { //damage spell
-                        attron(COLOR_PAIR(11));
-                        mvprintw(i, j, "%lc", (wint_t) 0x16ED);
-                        attroff(COLOR_PAIR(11));
+                        init_color(24, 1000, 200, 0);
+                        init_pair(45,24,COLOR_BLACK);
+                        attron(COLOR_PAIR(45));
+                        mvprintw(i, j, "%lc", (wint_t) 0x23FA);
+                        attroff(COLOR_PAIR(45));
                     }
+
                     else if (map[i][j] == '+'){
                         if(room_number[i][j] == colored_room1 || room_number[i][j] == colored_room2) {
                             attron(COLOR_PAIR(41));
@@ -8798,7 +8909,7 @@ int treasure_room(struct user *current_user , int level){
 
     int food4health_counter=0;
     int k=1;
-    init_color(30,1000,1000,0);
+    init_color(27,1000,800,0);
     init_pair(40,30,COLOR_BLACK);
 
 
@@ -8827,11 +8938,14 @@ int treasure_room(struct user *current_user , int level){
                         mvprintw(i, j, "%lc", (wint_t)0x25C6);
                         attroff(COLOR_PAIR(6));
                     }
-                    else if(map[i][j]=='@'){
-                        attron(COLOR_PAIR(7));
-                        mvprintw(i, j, "%lc", (wint_t)0x25C6);
-                        attroff(COLOR_PAIR(7));
+                    else if (map[i][j] == '@') {
+                        init_color(21, 1000, 400, 1000);
+                        init_pair(44,21,COLOR_BLACK);
+                        attron(COLOR_PAIR(44));
+                        mvprintw(i, j, "%lc", (wint_t) 0x25C6);
+                        attroff(COLOR_PAIR(44));
                     }
+
                     else if(map[i][j]=='F'){
                         attron(COLOR_PAIR(8));
                         mvaddch(i, j, map[i][j]);
@@ -8867,30 +8981,30 @@ int treasure_room(struct user *current_user , int level){
                         attroff(COLOR_PAIR(9));
                         //mvprintw(i, j, "%lc", (wint_t)0x2694); // ⚔
                     }
-                    else if(map[i][j]=='='){
-                        mvprintw(i, j, "%lc", (wint_t)0x23F9);
-                    }
-                    else if(map[i][j]=='/'){
-                        attron(COLOR_PAIR(6));
-                        mvprintw(i, j, "%lc", (wint_t)0x25B3);
-                        attroff(COLOR_PAIR(6));
-                    }
-                    else if(map[i][j]=='b') { //health spell
-                        attron(COLOR_PAIR(10));
-                        mvprintw(i, j, "%lc", (wint_t)0x2295);
-                        attroff(COLOR_PAIR(10));
-                    }
-                    else if(map[i][j]=='n'){ //speed spell
-                        attron(COLOR_PAIR(6));
-                        mvprintw(i, j, "%lc", (wint_t)0x27A4);
-                        attroff(COLOR_PAIR(6));
 
+                    else if (map[i][j] == '=') {
+//                        mvprintw(i, j, "%lc", (wint_t) 0x23F9);
+                        mvaddch(i, j, '&');
+                    } else if (map[i][j] == '/') {
+                        attron(COLOR_PAIR(6));
+                        mvprintw(i, j, "%lc", (wint_t) 0x25B3);
+                        attroff(COLOR_PAIR(6));
+                    } else if (map[i][j] == 'b') { //health spell
+                        attron(COLOR_PAIR(10));
+                        mvprintw(i, j, "%lc", (wint_t)0x271A);
+                        attroff(COLOR_PAIR(10));
+                    } else if (map[i][j] == 'n') { //speed spell
+                        attron(COLOR_PAIR(6));
+                        mvprintw(i, j, "%lc", (wint_t) 0x27A4);
+                        attroff(COLOR_PAIR(6));
+                    } else if (map[i][j] == 'm') { //damage spell
+                        init_color(24, 1000, 200, 0);
+                        init_pair(45,24,COLOR_BLACK);
+                        attron(COLOR_PAIR(45));
+                        mvprintw(i, j, "%lc", (wint_t) 0x23FA);
+                        attroff(COLOR_PAIR(45));
                     }
-                    else if(map[i][j]=='m'){ //damage spell
-                        attron(COLOR_PAIR(11));
-                        mvprintw(i, j, "%lc", (wint_t)0x16ED);
-                        attroff(COLOR_PAIR(11));
-                    }
+
                     else {
                         mvaddch(i, j, map[i][j]);
 
