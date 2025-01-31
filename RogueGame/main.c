@@ -907,9 +907,9 @@ int help(){
     temo_y++;
     mvprintw(temo_y++, temp_x, "[e] to open the food menu");
     temo_y+=3;
-    mvprintw(temo_y++, temp_x, "< spell >");
+    mvprintw(temo_y++, temp_x, "< Potions >");
     temo_y++;
-    mvprintw(temo_y++, temp_x, "[o] to open the spell menu");
+    mvprintw(temo_y++, temp_x, "[o] to open the potion menu");
     temo_y+=3;
     center_y+=20;
     mvprintw(temo_y++, temp_x, "< help >");
@@ -1253,7 +1253,7 @@ int potion(struct user *current_user){
         mvprintw(center_y+8, center_x-4, "************* ************* *************");
 
         mvprintw(center_y+16, center_x, "-- Use KEY UP & KEY DOWN to move between options --");
-        mvprintw(center_y+18, center_x, "-- Press ENTER to eat! --");
+        mvprintw(center_y+18, center_x, "-- Press ENTER to use! --");
         mvprintw(center_y+20, center_x, "-- Press Q to exit --");
         refresh();
         key = getch();
