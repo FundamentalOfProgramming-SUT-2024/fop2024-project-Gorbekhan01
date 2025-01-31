@@ -200,7 +200,7 @@ void opening() {
     mvprintw(center_y + 7, center_x, "            |___/            ");
     mvhline(center_y + 8, center_x, '-', 30);
     mvprintw(center_y + 9, center_x + 5, " G     A     M     E");
-    mvprintw(center_y + 11, center_x + 3, "▪ Powered by Gorbekhan ▪");
+    mvprintw(center_y + 11, center_x  , " ▪ Developed by Gorbekhan ▪");
     refresh();
     mvprintw(center_y + 13, center_x + 3, "###");
     sleep(1);
@@ -238,7 +238,7 @@ int choosing_user(char *username){
         mvprintw(center_y+2, center_y, selected == 1 ? "> old user " : "old user");
         mvprintw(center_y+4, center_y, selected == 2 ? "> continue as a guest"  : "continue as a guest");
         attron(COLOR_PAIR(2));
-        mvprintw(center_y+8,center_y , "To avoid possible problems, the size of your terminal window should be at least 50 x 170");
+        mvprintw(center_y+8,center_y , "To avoid possible problems, the size of your terminal window should be at least 170 x 50");
         attroff(COLOR_PAIR(2));
 
 
@@ -488,7 +488,7 @@ int new_user(char *username) {
         getstr(email);
         int len= strlen(email);
         if (strstr(email, "@") != 0 && strstr(email, ".") != 0 ) {
-            if(strstr(email,"@") + 1 < strstr(email,".") && len >=strstr(email,".")+1 ){
+            if(strstr(email,"@") + 1 < strstr(email,".")  ){
                 t = 1;
             }
             else{
@@ -812,7 +812,7 @@ int gamesetting(struct user *current_user) {
             attron(A_STANDOUT);
             mvprintw(center_y + 20, center_x - 4 , "[ Press Enter to start the game ]");
             attroff(A_STANDOUT);
-            mvprintw(center_y + 24 , center_x - 11 , "use -> and <- to move between options and then press enter");
+            mvprintw(center_y + 24 , center_x - 14 , "use -> and <- to move between options and then press enter");
 
             attroff(A_BOLD);
 
@@ -10047,22 +10047,22 @@ int treasure_room(struct user *current_user , int level){
         refresh();
 
         if(in_use_weapon==1){
-            mvprintw(max_y-2,76,"weapon: Mace");
+            mvprintw(max_y-2,78,"weapon: Mace");
         }
         else if(in_use_weapon==2){
-            mvprintw(max_y-2,76,"weapon: Dagger");
+            mvprintw(max_y-2,78,"weapon: Dagger");
         }
         else if(in_use_weapon==3){
-            mvprintw(max_y-2,76,"weapon: Magic Wand");
+            mvprintw(max_y-2,78,"weapon: Magic Wand");
         }
         else if(in_use_weapon==4){
-            mvprintw(max_y-2,76,"weapon: Normal Arrow");
+            mvprintw(max_y-2,78,"weapon: Normal Arrow");
         }
         else if(in_use_weapon==4){
-            mvprintw(max_y-2,76,"weapon: Sword");
+            mvprintw(max_y-2,78,"weapon: Sword");
         }
         else {
-            mvprintw(max_y-2,76,"weapon: no weapon in use!");
+            mvprintw(max_y-2,78,"weapon: no weapon in use!");
         }
 
 
