@@ -131,7 +131,7 @@ int game_f3(struct user *current_user , int level);
 int game_f4(struct user *current_user , int level);
 int treasure_room(struct user *current_user, int level);
 int food_bar(int* food1, int* health , int* food);
-int weapon(struct user *current_user);
+int weapon(struct user *current_user , int in_use);
 int potion(struct user *current_user);
 int pre_leaderboard(struct user *current_user);
 int lost(struct user *current_user);
@@ -184,8 +184,6 @@ void opening() {
     curs_set(0);
     noecho();
     cbreak();
-
-    clear();
     int max_y, max_x;
     getmaxyx(stdscr, max_y, max_x);
     int center_y = max_y / 2 - 4;
@@ -203,9 +201,18 @@ void opening() {
     mvhline(center_y + 8, center_x, '-', 30);
     mvprintw(center_y + 9, center_x + 5, " G     A     M     E");
     mvprintw(center_y + 11, center_x + 3, "▪ Powered by Gorbekhan ▪");
+    refresh();
+    mvprintw(center_y + 13, center_x + 3, "###");
+    sleep(1);
+    refresh();
+    mvprintw(center_y + 13, center_x + 3, "############");
+    sleep(1);
+    refresh();
+    mvprintw(center_y + 13, center_x + 3, "########################");
+
 
     refresh();
-    sleep(2);
+    sleep(1);
     clear();
     refresh();
 }
@@ -215,6 +222,7 @@ int choosing_user(char *username){
     keypad(stdscr, TRUE);
     curs_set(0);
     init_pair(1, COLOR_WHITE, COLOR_BLACK);
+    init_pair(2, COLOR_MAGENTA, COLOR_BLACK);
     int selected = 0;
     int key;
     int max_y, max_x;
@@ -229,6 +237,10 @@ int choosing_user(char *username){
         mvprintw(center_y,center_y , selected == 0 ? "> new user" : "new user");
         mvprintw(center_y+2, center_y, selected == 1 ? "> old user " : "old user");
         mvprintw(center_y+4, center_y, selected == 2 ? "> continue as a guest"  : "continue as a guest");
+        attron(COLOR_PAIR(2));
+        mvprintw(center_y+8,center_y , "To avoid possible problems, the size of your terminal window should be at least 50 x 170");
+        attroff(COLOR_PAIR(2));
+
 
         refresh();
         key = getch();
@@ -474,8 +486,15 @@ int new_user(char *username) {
         move(center_y + 8, center_x + 12);
         clrtoeol();
         getstr(email);
-        if (strstr(email, "@") != 0 && strstr(email, ".") != 0) {
-            t = 1;
+        int len= strlen(email);
+        if (strstr(email, "@") != 0 && strstr(email, ".") != 0 ) {
+            if(strstr(email,"@") + 1 < strstr(email,".") && len >=strstr(email,".")+1 ){
+                t = 1;
+            }
+            else{
+                mvprintw(center_y + 12, center_x + 9, "Email is not valid!");
+                t = 0;
+            }
         } else {
             mvprintw(center_y + 12, center_x + 9, "Email is not valid!");
             t = 0;
@@ -485,7 +504,6 @@ int new_user(char *username) {
     fptr = fopen("users.txt", "a");
     fprintf(fptr, "%s %s %s\n", username, password, email);
     fclose(fptr);
-    sleep(2);
     clear();
     refresh();
     getch();
@@ -684,7 +702,7 @@ int leaderboard(struct user *current_user) {
         strftime(join_date, sizeof(join_date), "%Y-%m-%d/%H:%M", time_info);
 
         fptr = fopen("leaderboard.txt", "a");
-        current_user->rank = k;
+        current_user->rank = k+1;
         current_user->total_score = 0;
         current_user->total_gold = 0;
         current_user->total_finished_games = 0;
@@ -698,7 +716,7 @@ int leaderboard(struct user *current_user) {
                 current_user->joined_date);
 
         attron(A_BOLD | A_BLINK);
-        mvprintw(center_y + 4 + k, center_x, "%-10d %-15s %-15d %-15d %-15d %-20s",
+        mvprintw(center_y + 4 + k, center_x-2, "%-10d %-15s %-15d %-15d %-15d %-20s",
                  current_user->rank,
                  current_user->username,
                  current_user->total_score,
@@ -794,7 +812,7 @@ int gamesetting(struct user *current_user) {
             attron(A_STANDOUT);
             mvprintw(center_y + 20, center_x - 4 , "[ Press Enter to start the game ]");
             attroff(A_STANDOUT);
-            mvprintw(center_y + 24 , center_x - 9 , "use -> and <- to move between options and then press enter");
+            mvprintw(center_y + 24 , center_x - 11 , "use -> and <- to move between options and then press enter");
 
             attroff(A_BOLD);
 
@@ -927,22 +945,24 @@ int food_bar(int* food1,int* health,int* food){
     int key;
     init_pair(1,COLOR_YELLOW,COLOR_RED);
     while(1) {
-        mvprintw(center_y-12,22,"** S T A T U S ***************************");
+        mvprintw(center_y-12,22,"** S T A T U S ************************************");
         mvprintw(center_y-10,22,"health: ");
         refresh();
         for(int i =0;i<=*health;i++){
             mvprintw(center_y-10,30+i,"♥");
             mvprintw(center_y-10,30+*health," ");
+            mvprintw(center_y-10,42,"%d%c",*health*10,'%');
         }
 
         //food
-        mvprintw(center_y-10,44,"food: ");
+        mvprintw(center_y-10,50,"food: ");
 
         for(int i =0;i<=*food;i++){
-            mvprintw(center_y-10,50+i,"+");
-            mvprintw(center_y-10,50+*food," ");
+            mvprintw(center_y-10,56+i,"+");
+            mvprintw(center_y-10,56+*food," ");
+            mvprintw(center_y-10,68,"%d%c",*food*10,'%');
         }
-        mvprintw(center_y-8,22,"******************************************");
+        mvprintw(center_y-8,22,"***************************************************");
 
         refresh();
         mvprintw(center_y, center_x, "----- FOODS BASKET -----",*food1);
@@ -960,7 +980,7 @@ int food_bar(int* food1,int* health,int* food){
         }
         mvprintw(center_y+10, center_x, "------- --------- -------",*food1);
 
-        mvprintw(center_y+16, center_x, "-- Use KEY UP & KEY DOWN to choose food --");
+        mvprintw(center_y+16, center_x, "-- Use KEY UP & KEY DOWN to move between options --");
         mvprintw(center_y+18, center_x, "-- Press ENTER to eat! --");
         mvprintw(center_y+20, center_x, "-- Press Q to exit --");
         refresh();
@@ -991,10 +1011,6 @@ int food_bar(int* food1,int* health,int* food){
                         *food1=0;
                     }
                     else{
-                        *health = *health+3;
-                        if(*health>10){
-                            *health=10;
-                        }
                         *food = 10;
                         *food1=*food1-1;
                     }
@@ -1009,7 +1025,7 @@ int food_bar(int* food1,int* health,int* food){
 
 }
 
-int weapon(struct user *current_user) {
+int weapon(struct user *current_user , int in_use) {
     initscr();
     keypad(stdscr, TRUE);
     refresh();
@@ -1041,7 +1057,7 @@ int weapon(struct user *current_user) {
         int k = 0;
 
         mvprintw(center_y-4, center_x, ">>>> W E A P O N S <<<<");
-        mvprintw(center_y+22, center_x, "-- Use KEY UP & KEY DOWN to choose Weapon --");
+        mvprintw(center_y+22, center_x, "-- Use KEY UP & KEY DOWN to move between options --");
         mvprintw(center_y+24, center_x, "-- Press < ENTER > to use! --");
         mvprintw(center_y+26, center_x, "-- Press < Q > to exit --");
 
@@ -1104,7 +1120,7 @@ int weapon(struct user *current_user) {
         if(key == 'q' || key == 'Q') {
             endwin();
             clear();
-            return 0;
+            return in_use;
         }
 
         switch(key) {
@@ -1236,7 +1252,7 @@ int potion(struct user *current_user){
 
         mvprintw(center_y+8, center_x-4, "************* ************* *************");
 
-        mvprintw(center_y+16, center_x, "-- Use KEY UP & KEY DOWN to choose potion --");
+        mvprintw(center_y+16, center_x, "-- Use KEY UP & KEY DOWN to move between options --");
         mvprintw(center_y+18, center_x, "-- Press ENTER to eat! --");
         mvprintw(center_y+20, center_x, "-- Press Q to exit --");
         refresh();
@@ -1292,6 +1308,7 @@ int potion(struct user *current_user){
 
 
 int game_f1(struct user *current_user, int level) {
+    mvprintw(2,1,"  ");
 
     init_color(30, 333, 333, 333);
     init_pair(40, 30, COLOR_BLACK);
@@ -1698,7 +1715,7 @@ int game_f1(struct user *current_user, int level) {
         }
     }
 
-    weapon_num= 2 + rand() % 3;
+    weapon_num= 2 + rand() % 4;
     x3=0,y3=0;
     weaponi =0 ;
     while(!weaponi){
@@ -1731,7 +1748,7 @@ int game_f1(struct user *current_user, int level) {
     }
 
     if(current_user->game_setting.game_level==0){
-        weapon_num= 2 + rand() % 3;
+        weapon_num= 2 + rand() % 4;
         x3=0,y3=0;
         weaponi =0 ;
         while(!weaponi){
@@ -1763,7 +1780,6 @@ int game_f1(struct user *current_user, int level) {
             }
         }
     }
-
 
 
     //place player randomly on map
@@ -2130,7 +2146,7 @@ int game_f1(struct user *current_user, int level) {
                             mvaddch(i, j, map[i][j]);
                             attroff(COLOR_PAIR(5));
                         }
-                    }else {
+                    }else if(map[i][j]!='1') {
                         if ((room_number[i][j] == colored_room1 || room_number[i][j] == colored_room2)) {
                             attron(COLOR_PAIR(41));
                             mvaddch(i, j, map[i][j]);
@@ -2154,7 +2170,7 @@ int game_f1(struct user *current_user, int level) {
 
         if(c=='i'){
             clear();
-            in_use_weapon= weapon(current_user);
+            in_use_weapon= weapon(current_user,in_use_weapon);
         }
 
         if(c ==101) { ///food window
@@ -2192,7 +2208,7 @@ int game_f1(struct user *current_user, int level) {
         } else {
             k=1;
         }
-        mvprintw(2,max_x-20,"[h] to open help menu");
+        mvprintw(2,max_x-30,"[h] to open help menu");
 
 
 
@@ -2945,8 +2961,8 @@ int game_f1(struct user *current_user, int level) {
             strcpy(password,"0");
         }
 
-        if(food==10){
-            if(food4health_counter==2){
+        if(food>=10){
+            if(food4health_counter>=4){
                 if(current_user->spells.health_spell_counter>0){
                     health+=2;
                     current_user->spells.health_spell_counter-=1;
@@ -2960,6 +2976,10 @@ int game_f1(struct user *current_user, int level) {
             }
         }
 
+        food4health_counter++;
+        refresh();
+
+        mvprintw(max_y-2,60,"floor : 1");
 
         //health
         mvprintw(max_y-2,2,"health: ");
@@ -2970,35 +2990,39 @@ int game_f1(struct user *current_user, int level) {
             for(int j=0;j<10-i;j++){
                 mvprintw(max_y-2,10+health+j," ");
             }
+            mvprintw(max_y-2,10+12,"%d%c",health*10,'%');
+
         }
 
         //food
-        mvprintw(max_y-2,24,"food: ");
+        mvprintw(max_y-2,32,"food: ");
 
         for(int i =0;i<=food;i++){
-            mvprintw(max_y-2,30+i,"+");
-            mvprintw(max_y-2,30+food," ");
+            mvprintw(max_y-2,38+i,"+");
+            mvprintw(max_y-2,38+food," ");
+            mvprintw(max_y-2,38 + 12,"     ");
+            mvprintw(max_y-2,38 + 12,"%d%c",food*10,'%');
+            refresh();
         }
         refresh();
 
-        mvprintw(max_y-2,48,"floor : 1");
         if(in_use_weapon==1){
-            mvprintw(max_y-2,64,"weapon: Mace");
+            mvprintw(max_y-2,74,"weapon: Mace");
         }
         else if(in_use_weapon==2){
-            mvprintw(max_y-2,64,"weapon: Dagger");
+            mvprintw(max_y-2,74,"weapon: Dagger");
         }
         else if(in_use_weapon==3){
-            mvprintw(max_y-2,64,"weapon: Magic Wand");
+            mvprintw(max_y-2,74,"weapon: Magic Wand");
         }
         else if(in_use_weapon==4){
-            mvprintw(max_y-2,64,"weapon: Normal Arrow");
+            mvprintw(max_y-2,74,"weapon: Normal Arrow");
         }
         else if(in_use_weapon==4){
-            mvprintw(max_y-2,64,"weapon: Sword");
+            mvprintw(max_y-2,74,"weapon: Sword");
         }
         else {
-            mvprintw(max_y-2,64,"weapon: no weapon in use!");
+            mvprintw(max_y-2,74,"weapon: no weapon in use!");
         }
 
         counter++;
@@ -3052,7 +3076,7 @@ int game_f1(struct user *current_user, int level) {
         previous_x = new_x;
         previous_y = new_y;
         previous_c =c;
-        food4health_counter++;
+        refresh();
 
     } while ((c = getch()) != 27);
 
@@ -3062,7 +3086,7 @@ int game_f1(struct user *current_user, int level) {
 
 int game_f2(struct user *current_user , int level) {
 
-
+    mvprintw(2,1,"  ");
     init_color(30, 333, 333, 333);
     init_pair(40, 30, COLOR_BLACK);
     init_color(31, 0, 1000, 400);
@@ -3395,7 +3419,7 @@ int game_f2(struct user *current_user , int level) {
     }
 
     //weapons
-    int weapon_num= 1 + rand() % 2;
+    int weapon_num= 2 + rand() % 4;
     int x3=0,y3=0;
     int weaponi =0 ;
     while(!weaponi){
@@ -3427,7 +3451,7 @@ int game_f2(struct user *current_user , int level) {
         }
     }
 
-    weapon_num= 1 + rand() % 4;
+    weapon_num= 2 + rand() % 4;
     x3=0,y3=0;
     weaponi =0 ;
     while(!weaponi){
@@ -3830,7 +3854,7 @@ int game_f2(struct user *current_user , int level) {
                             mvaddch(i, j, map[i][j]);
                             attroff(COLOR_PAIR(5));
                         }
-                    }else {
+                    }else if(map[i][j]!='1') {
                         if ((room_number[i][j] == colored_room1 || room_number[i][j] == colored_room2)) {
                             attron(COLOR_PAIR(41));
                             mvaddch(i, j, map[i][j]);
@@ -3855,7 +3879,7 @@ int game_f2(struct user *current_user , int level) {
 
         if(c=='i'){
             clear();
-            in_use_weapon= weapon(current_user);
+            in_use_weapon= weapon(current_user,in_use_weapon);
 
         }
 
@@ -3869,7 +3893,7 @@ int game_f2(struct user *current_user , int level) {
         }
 
         ///movement
-        mvprintw(2,max_x-20,"[h] to open help menu");
+        mvprintw(2,max_x-30,"[h] to open help menu");
 
         if(current_user->spells.speed_spell_counter>0){
             if (c == KEY_UP && y > 0) new_y-=2;
@@ -3908,18 +3932,18 @@ int game_f2(struct user *current_user , int level) {
 
 
             if(map[new_y][new_x]=='b'){
-                mvprintw(2,3,"You claimed a Health spell              ");
+                mvprintw(2,3,"You claimed a Health potion              ");
                 current_user->spells.health_spell++;
             }
 
             if(map[new_y][new_x]=='n'){
-                mvprintw(2,3,"You claimed a Speed spell              ");
+                mvprintw(2,3,"You claimed a Speed potion              ");
                 current_user->spells.speed_spell++;
 
             }
 
             if(map[new_y][new_x]=='m'){
-                mvprintw(2,3,"You claimed a Damage spell              ");
+                mvprintw(2,3,"You claimed a Damage potion              ");
                 current_user->spells.damage_spell++;
             }
 
@@ -4088,7 +4112,10 @@ int game_f2(struct user *current_user , int level) {
 
                     }
 
-                    move_fire_breathing_monster(new_y_f2, new_x_f2);
+                    if(map[new_y_f2][new_x_f2]!=' '){
+                        move_fire_breathing_monster(new_y_f2, new_x_f2);
+
+                    }
                 }
                 refresh();
 
@@ -4138,8 +4165,10 @@ int game_f2(struct user *current_user , int level) {
 
                 }
 
-                move_fire_breathing_monster(new_y_f, new_x_f);
-            }
+                if(map[new_y_f][new_x_f]!=' '){
+                    move_fire_breathing_monster(new_y_f, new_x_f);
+
+                }            }
             refresh();
 
             if(fire_health>=0 && new_x_f==new_x && new_y_f==new_y){
@@ -4732,8 +4761,8 @@ int game_f2(struct user *current_user , int level) {
         if(counter==40){
             strcpy(password,"0");
         }
-        if(food==10){
-            if(food4health_counter==2){
+        if(food>=10){
+            if(food4health_counter>=4){
                 if(current_user->spells.health_spell_counter>0){
                     health+=2;
                     current_user->spells.health_spell_counter-=1;
@@ -4747,6 +4776,7 @@ int game_f2(struct user *current_user , int level) {
             }
         }
 
+        mvprintw(max_y-2,60,"floor : 2");
 
         //health
         mvprintw(max_y-2,2,"health: ");
@@ -4757,34 +4787,39 @@ int game_f2(struct user *current_user , int level) {
             for(int j=0;j<10-i;j++){
                 mvprintw(max_y-2,10+health+j," ");
             }
+            mvprintw(max_y-2,10+12,"%d%c",health*10,'%');
+
         }
 
         //food
-        mvprintw(max_y-2,24,"food: ");
+        mvprintw(max_y-2,32,"food: ");
 
         for(int i =0;i<=food;i++){
-            mvprintw(max_y-2,30+i,"+");
-            mvprintw(max_y-2,30+food," ");
+            mvprintw(max_y-2,38+i,"+");
+            mvprintw(max_y-2,38+food," ");
+            mvprintw(max_y-2,38 + 12,"     ");
+            mvprintw(max_y-2,38 + 12,"%d%c",food*10,'%');
+            refresh();
         }
+        refresh();
 
-        mvprintw(max_y-2,48,"floor : 2");
         if(in_use_weapon==1){
-            mvprintw(max_y-2,64,"weapon: Mace");
+            mvprintw(max_y-2,74,"weapon: Mace");
         }
         else if(in_use_weapon==2){
-            mvprintw(max_y-2,64,"weapon: Dagger");
+            mvprintw(max_y-2,74,"weapon: Dagger");
         }
         else if(in_use_weapon==3){
-            mvprintw(max_y-2,64,"weapon: Magic Wand");
+            mvprintw(max_y-2,74,"weapon: Magic Wand");
         }
         else if(in_use_weapon==4){
-            mvprintw(max_y-2,64,"weapon: Normal Arrow");
+            mvprintw(max_y-2,74,"weapon: Normal Arrow");
         }
         else if(in_use_weapon==4){
-            mvprintw(max_y-2,64,"weapon: Sword");
+            mvprintw(max_y-2,74,"weapon: Sword");
         }
         else {
-            mvprintw(max_y-2,64,"weapon: no weapon in use!");
+            mvprintw(max_y-2,74,"weapon: no weapon in use!");
         }
 
 
@@ -4828,6 +4863,7 @@ int game_f2(struct user *current_user , int level) {
         previous_y = new_y;
         previous_c =c;
         food4health_counter++;
+        refresh();
 
     } while ((c = getch()) != 27);
 
@@ -4836,6 +4872,7 @@ int game_f2(struct user *current_user , int level) {
 
 
 int game_f3(struct user *current_user , int level) {
+    mvprintw(2,1,"  ");
     init_color(30, 333, 333, 333);
     init_pair(40, 30, COLOR_BLACK);
     init_color(31, 0, 1000, 400);
@@ -5205,7 +5242,7 @@ int game_f3(struct user *current_user , int level) {
     }
 
     //weapons
-    int weapon_num= 1 + rand() % 2;
+    int weapon_num= 2 + rand() % 3;
     int x3=0,y3=0;
     int weaponi =0 ;
     while(!weaponi){
@@ -5237,7 +5274,7 @@ int game_f3(struct user *current_user , int level) {
         }
     }
 
-    weapon_num= 1 + rand() % 4;
+    weapon_num= 2 + rand() % 4;
     x3=0,y3=0;
     weaponi =0 ;
     while(!weaponi){
@@ -5630,7 +5667,7 @@ int game_f3(struct user *current_user , int level) {
                             attroff(COLOR_PAIR(5));
                         }
                     }
-                        else {
+                    else if(map[i][j]!='1') {
                         if ((room_number[i][j] == colored_room1 || room_number[i][j] == colored_room2)) {
                             attron(COLOR_PAIR(41));
                             mvaddch(i, j, map[i][j]);
@@ -5655,7 +5692,7 @@ int game_f3(struct user *current_user , int level) {
 
         if(c=='i'){ //weapon
             clear();
-            in_use_weapon= weapon(current_user);
+            in_use_weapon= weapon(current_user,in_use_weapon);
 
         }
 
@@ -5684,7 +5721,7 @@ int game_f3(struct user *current_user , int level) {
             if (c == KEY_LEFT && x > 0) new_x--;
 
         }
-        mvprintw(2,max_x-20,"[h] to open help menu");
+        mvprintw(2,max_x-30,"[h] to open help menu");
 
         if(current_user->spells.damage_spell_counter>0){
             k=2;
@@ -5709,18 +5746,18 @@ int game_f3(struct user *current_user , int level) {
 
 
             if(map[new_y][new_x]=='b'){
-                mvprintw(2,3,"You claimed a Health spell              ");
+                mvprintw(2,3,"You claimed a Health potion              ");
                 current_user->spells.health_spell++;
             }
 
             if(map[new_y][new_x]=='n'){
-                mvprintw(2,3,"You claimed a Speed spell              ");
+                mvprintw(2,3,"You claimed a Speed potion              ");
                 current_user->spells.speed_spell++;
 
             }
 
             if(map[new_y][new_x]=='m'){
-                mvprintw(2,3,"You claimed a Damage spell              ");
+                mvprintw(2,3,"You claimed a Damage potion              ");
                 current_user->spells.damage_spell++;
             }
 
@@ -5888,7 +5925,10 @@ int game_f3(struct user *current_user , int level) {
 
                 }
 
-                move_fire_breathing_monster(new_y_f, new_x_f);
+                if(map[new_y_f][new_x_f]!=' '){
+                    move_fire_breathing_monster(new_y_f, new_x_f);
+
+                }
             }
             refresh();
 
@@ -5934,7 +5974,10 @@ int game_f3(struct user *current_user , int level) {
                         new_x_g=new_x;
                     }
 
-                    move_giant(new_y_g, new_x_g);
+                    if(map[new_y_g][new_x_g]!=' '){
+                        move_giant(new_y_g, new_x_g);
+
+                    }
                 }
                 refresh();
 
@@ -6525,8 +6568,8 @@ int game_f3(struct user *current_user , int level) {
             strcpy(password,"0");
         }
 
-        if(food==10){
-            if(food4health_counter==2){
+        if(food>=10){
+            if(food4health_counter>=4){
                 if(current_user->spells.health_spell_counter>0){
                     health+=2;
                     current_user->spells.health_spell_counter-=1;
@@ -6540,6 +6583,10 @@ int game_f3(struct user *current_user , int level) {
             }
         }
 
+        counter++;
+
+        mvprintw(max_y-2,60,"floor : 3");
+
         //health
         mvprintw(max_y-2,2,"health: ");
         refresh();
@@ -6549,36 +6596,39 @@ int game_f3(struct user *current_user , int level) {
             for(int j=0;j<10-i;j++){
                 mvprintw(max_y-2,10+health+j," ");
             }
+            mvprintw(max_y-2,10+12,"%d%c",health*10,'%');
+
         }
 
         //food
-        mvprintw(max_y-2,24,"food: ");
+        mvprintw(max_y-2,32,"food: ");
 
         for(int i =0;i<=food;i++){
-            mvprintw(max_y-2,30+i,"+");
-            mvprintw(max_y-2,30+food," ");
+            mvprintw(max_y-2,38+i,"+");
+            mvprintw(max_y-2,38+food," ");
+            mvprintw(max_y-2,38 + 12,"     ");
+            mvprintw(max_y-2,38 + 12,"%d%c",food*10,'%');
+            refresh();
         }
+        refresh();
 
-        counter++;
-
-        mvprintw(max_y-2,48,"floor : 3");
         if(in_use_weapon==1){
-            mvprintw(max_y-2,64,"weapon: Mace");
+            mvprintw(max_y-2,74,"weapon: Mace");
         }
         else if(in_use_weapon==2){
-            mvprintw(max_y-2,64,"weapon: Dagger");
+            mvprintw(max_y-2,74,"weapon: Dagger");
         }
         else if(in_use_weapon==3){
-            mvprintw(max_y-2,64,"weapon: Magic Wand");
+            mvprintw(max_y-2,74,"weapon: Magic Wand");
         }
         else if(in_use_weapon==4){
-            mvprintw(max_y-2,64,"weapon: Normal Arrow");
+            mvprintw(max_y-2,74,"weapon: Normal Arrow");
         }
         else if(in_use_weapon==4){
-            mvprintw(max_y-2,64,"weapon: Sword");
+            mvprintw(max_y-2,74,"weapon: Sword");
         }
         else {
-            mvprintw(max_y-2,64,"weapon: no weapon in use!");
+            mvprintw(max_y-2,74,"weapon: no weapon in use!");
         }
 
 
@@ -6629,7 +6679,7 @@ int game_f3(struct user *current_user , int level) {
 
 
 int game_f4(struct user *current_user, int level) {
-
+    mvprintw(2,1,"  ");
     init_color(30, 333, 333, 333);
     init_pair(40, 30, COLOR_BLACK);
     init_color(31, 0, 1000, 400);
@@ -7020,7 +7070,7 @@ int game_f4(struct user *current_user, int level) {
     }
 
     //weapons
-    int weapon_num= 1 + rand() % 2;
+    int weapon_num= 2 + rand() % 4;
     int x3=0,y3=0;
     int weaponi =0 ;
     while(!weaponi){
@@ -7052,7 +7102,7 @@ int game_f4(struct user *current_user, int level) {
         }
     }
 
-    weapon_num= 1 + rand() % 4;
+    weapon_num= 2 + rand() % 4;
     x3=0,y3=0;
     weaponi =0 ;
     while(!weaponi){
@@ -7451,7 +7501,7 @@ int game_f4(struct user *current_user, int level) {
                         mvprintw(i, j, "👑");
 
                     }
-                    else {
+                    else if(map[i][j]!='1') {
                         if ((room_number[i][j] == colored_room1 || room_number[i][j] == colored_room2)) {
                             attron(COLOR_PAIR(41));
                             mvaddch(i, j, map[i][j]);
@@ -7477,7 +7527,7 @@ int game_f4(struct user *current_user, int level) {
 
         if(c=='i'){//weapon
             clear();
-            in_use_weapon= weapon(current_user);
+            in_use_weapon= weapon(current_user,in_use_weapon);
 
         }
 
@@ -7506,7 +7556,7 @@ int game_f4(struct user *current_user, int level) {
             if (c == KEY_LEFT && x > 0) new_x--;
 
         }
-        mvprintw(2,max_x-20,"[h] to open help menu");
+        mvprintw(2,max_x-30,"[h] to open help menu");
 
 
         if(current_user->spells.damage_spell_counter>0){
@@ -7538,18 +7588,18 @@ int game_f4(struct user *current_user, int level) {
 
 
             if(map[new_y][new_x]=='b'){
-                mvprintw(2,3,"You claimed a Health spell              ");
+                mvprintw(2,3,"You claimed a Health potion              ");
                 current_user->spells.health_spell++;
             }
 
             if(map[new_y][new_x]=='n'){
-                mvprintw(2,3,"You claimed a Speed spell              ");
+                mvprintw(2,3,"You claimed a Speed potion              ");
                 current_user->spells.speed_spell++;
 
             }
 
             if(map[new_y][new_x]=='m'){
-                mvprintw(2,3,"You claimed a Damage spell              ");
+                mvprintw(2,3,"You claimed a Damage potion              ");
                 current_user->spells.damage_spell++;
             }
 
@@ -7719,8 +7769,10 @@ int game_f4(struct user *current_user, int level) {
                     }
 
                 }
+                if(map[new_y_f][new_x_f]!=' '){
+                    move_fire_breathing_monster(new_y_f, new_x_f);
 
-                move_fire_breathing_monster(new_y_f, new_x_f);
+                }
             }
             refresh();
 
@@ -7773,11 +7825,14 @@ int game_f4(struct user *current_user, int level) {
 
                 }
 
-                move_giant(new_y_g, new_x_g);
+                if(map[new_y_g][new_x_g]!=' '){
+                    move_giant(new_y_g, new_x_g);
+
+                }
             }
             refresh();
 
-            if(giant_health>=0 && new_x_g==new_x && new_y_g==new_y){
+            if(giant_health>0 && new_x_g==new_x && new_y_g==new_y){
                 if(current_user->game_setting.game_level==0){
                     health -= 1;
                 } else{
@@ -8363,8 +8418,8 @@ int game_f4(struct user *current_user, int level) {
         if(counter==40){
             strcpy(password,"0");
         }
-        if(food==10){
-            if(food4health_counter==2){
+        if(food>=10){
+            if(food4health_counter>=4){
                 if(current_user->spells.health_spell_counter>0){
                     health+=2;
                     current_user->spells.health_spell_counter-=1;
@@ -8378,6 +8433,9 @@ int game_f4(struct user *current_user, int level) {
             }
         }
 
+        mvprintw(max_y-2,60,"floor : 4");
+        counter++;
+
         //health
         mvprintw(max_y-2,2,"health: ");
         refresh();
@@ -8387,38 +8445,40 @@ int game_f4(struct user *current_user, int level) {
             for(int j=0;j<10-i;j++){
                 mvprintw(max_y-2,10+health+j," ");
             }
+            mvprintw(max_y-2,10+12,"%d%c",health*10,'%');
+
         }
 
         //food
-        mvprintw(max_y-2,24,"food: ");
+        mvprintw(max_y-2,32,"food: ");
 
         for(int i =0;i<=food;i++){
-            mvprintw(max_y-2,30+i,"+");
-            mvprintw(max_y-2,30+food," ");
+            mvprintw(max_y-2,38+i,"+");
+            mvprintw(max_y-2,38+food," ");
+            mvprintw(max_y-2,38 + 12,"     ");
+            mvprintw(max_y-2,38 + 12,"%d%c",food*10,'%');
+            refresh();
         }
+        refresh();
 
-        counter++;
-
-        mvprintw(max_y-2,48,"floor : 4");
         if(in_use_weapon==1){
-            mvprintw(max_y-2,64,"weapon: Mace");
+            mvprintw(max_y-2,74,"weapon: Mace");
         }
         else if(in_use_weapon==2){
-            mvprintw(max_y-2,64,"weapon: Dagger");
+            mvprintw(max_y-2,74,"weapon: Dagger");
         }
         else if(in_use_weapon==3){
-            mvprintw(max_y-2,64,"weapon: Magic Wand");
+            mvprintw(max_y-2,74,"weapon: Magic Wand");
         }
         else if(in_use_weapon==4){
-            mvprintw(max_y-2,64,"weapon: Normal Arrow");
+            mvprintw(max_y-2,74,"weapon: Normal Arrow");
         }
         else if(in_use_weapon==4){
-            mvprintw(max_y-2,64,"weapon: Sword");
+            mvprintw(max_y-2,74,"weapon: Sword");
         }
         else {
-            mvprintw(max_y-2,64,"weapon: no weapon in use!");
+            mvprintw(max_y-2,74,"weapon: no weapon in use!");
         }
-
 
 
         refresh();
@@ -8524,8 +8584,8 @@ int treasure_room(struct user *current_user , int level){
         while (ok == 0) {
 
 
-            size_room_y = 18;
-            size_room_x = 18;
+            size_room_y = 21;
+            size_room_x = 21;
 
 
             room_y = max_y/2 -10;
@@ -8584,13 +8644,13 @@ int treasure_room(struct user *current_user , int level){
     //traps
     int num_traps;
     if(current_user->game_setting.game_level==0){
-        num_traps= 8+ (rand() % 3);
+        num_traps= 10+ (rand() % 3);
     }
     else if(current_user->game_setting.game_level==1){
-        num_traps= 10 + (rand() % 5);
+        num_traps= 12 + (rand() % 5);
     }
     else if(current_user->game_setting.game_level==2){
-        num_traps= 12 + (rand() % 7);
+        num_traps= 14 + (rand() % 7);
     }
     int nt=0 ,ty ,tx;
     while(nt<num_traps){
@@ -8674,7 +8734,7 @@ int treasure_room(struct user *current_user , int level){
     }
 
     //weapons
-    int weapon_num= 1 + rand() % 2;
+    int weapon_num= 2 + rand() % 4;
     int x3=0,y3=0;
     int weaponi =0 ;
     while(!weaponi){
@@ -8706,7 +8766,7 @@ int treasure_room(struct user *current_user , int level){
         }
     }
 
-    weapon_num= 1 + rand() % 4;
+    weapon_num= 2 + rand() % 4;
     x3=0,y3=0;
     weaponi =0 ;
     while(!weaponi){
@@ -8889,9 +8949,6 @@ int treasure_room(struct user *current_user , int level){
     int snake_health = 20;
     int undeed_health = 30;
     int snake_chase=0;
-    if(current_user->game_setting.snake_chasing==1){
-        snake_chase=1;
-    }
     char previous_c;
     int start_normal_arrow=0;  int xfor4, yfor4, counterfor4;int nw=0,na=0,ns=0,nd=0;
     int start_magic_wand=0;  int xfor3, yfor3, counterfor3;int mw=0,ma=0,ms=0,md=0;
@@ -9001,7 +9058,7 @@ int treasure_room(struct user *current_user , int level){
                         attroff(COLOR_PAIR(45));
                     }
 
-                    else {
+                    else if (map[i][j]!='1'){
                         mvaddch(i, j, map[i][j]);
 
                     }
@@ -9019,7 +9076,7 @@ int treasure_room(struct user *current_user , int level){
 
         if(c=='i'){
             clear();
-            in_use_weapon= weapon(current_user);
+            in_use_weapon= weapon(current_user,in_use_weapon);
 
         }
 
@@ -9031,7 +9088,7 @@ int treasure_room(struct user *current_user , int level){
             }
             c = getch();
         }
-        mvprintw(2,max_x-20,"[h] to open help menu");
+        mvprintw(2,max_x-30,"[h] to open help menu");
 
         ///movement
 
@@ -9069,19 +9126,21 @@ int treasure_room(struct user *current_user , int level){
             map[new_y][new_x] == 'm') {
 
 
+            mvprintw(2,1,"  ");
+
             if(map[new_y][new_x]=='b'){
-                mvprintw(2,3,"You claimed a Health spell              ");
+                mvprintw(2,3,"You claimed a Health potion              ");
                 current_user->spells.health_spell++;
             }
 
             if(map[new_y][new_x]=='n'){
-                mvprintw(2,3,"You claimed a Speed spell              ");
+                mvprintw(2,3,"You claimed a Speed potion              ");
                 current_user->spells.speed_spell++;
 
             }
 
             if(map[new_y][new_x]=='m'){
-                mvprintw(2,3,"You claimed a Damage spell              ");
+                mvprintw(2,3,"You claimed a Damage potion              ");
                 current_user->spells.damage_spell++;
             }
 
@@ -9273,11 +9332,9 @@ int treasure_room(struct user *current_user , int level){
         int gx = new_x - xg;
         int gy = new_y - yg;
 
-        if(giant_health>0){
 
-            int new_x_g , new_y_g;
-            int gx = new_x - xg;
-            int gy = new_y - yg;
+
+        if(giant_health>0){
 
             if(giant_health>0){
                 if(room_number[new_y][new_x] == room_number[yf][xf]  ) {
@@ -9327,7 +9384,7 @@ int treasure_room(struct user *current_user , int level){
 
         if(undeed_health>0){
 
-            if( abs(ux)==1 || abs(ux)==0 &&  abs(uy)==1 || abs(uy)==0) {
+            if(abs(gx)<=7 || abs(gy)<=7) {
 
                 new_x_u = xu;
                 new_y_u = yu;
@@ -9466,7 +9523,7 @@ int treasure_room(struct user *current_user , int level){
 
 
                 }
-                if ((abs(fy) == 1 || abs(fy) == -1 || abs(fy) == 0) &&
+                else if ((abs(fy) == 1 || abs(fy) == -1 || abs(fy) == 0) &&
                     (abs(fx) == 1 || abs(fx) == -1 || abs(fx) == 0)) {
                     fire_health -= 5*k;
                     if (fire_health <= 0) {
@@ -9476,7 +9533,7 @@ int treasure_room(struct user *current_user , int level){
 
 
                 }
-                if ((abs(sy) == 1 || abs(sy) == -1 || abs(sy) == 0) &&
+                else if ((abs(sy) == 1 || abs(sy) == -1 || abs(sy) == 0) &&
                     (abs(sx) == 1 || abs(sx) == -1 || abs(sx) == 0)) {
                     snake_health -= 5*k;
                     if (snake_health <= 0) {
@@ -9485,7 +9542,7 @@ int treasure_room(struct user *current_user , int level){
                     mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
 
                 }
-                if ((abs(gy) == 1 || abs(gy) == -1 || abs(gy) == 0) &&
+                else if ((abs(gy) == 1 || abs(gy) == -1 || abs(gy) == 0) &&
                     (abs(gx) == 1 || abs(gx) == -1 || abs(gx) == 0)) {
                     giant_health -= 5*k;
                     if (giant_health <= 0) {
@@ -9494,7 +9551,7 @@ int treasure_room(struct user *current_user , int level){
                     mvprintw(3, 3, "You hit Giant!  health: %d/15                                    ", giant_health);
 
                 }
-                if ((abs(uy) == 1 || abs(uy) == -1 || abs(uy) == 0) &&
+                else if ((abs(uy) == 1 || abs(uy) == -1 || abs(uy) == 0) &&
                     (abs(ux) == 1 || abs(ux) == -1 || abs(ux) == 0)) {
                     undeed_health -= 5*k;
                     if (undeed_health <= 0) {
@@ -9934,8 +9991,8 @@ int treasure_room(struct user *current_user , int level){
 
 
 
-        if(food==10){
-            if(food4health_counter==2){
+        if(food>=10){
+            if(food4health_counter>=3){
                 if(current_user->spells.health_spell_counter>0){
                     health+=2;
                     current_user->spells.health_spell_counter-=1;
@@ -9962,31 +10019,50 @@ int treasure_room(struct user *current_user , int level){
         }
 
         //food
-        mvprintw(max_y-2,24,"food: ");
+        mvprintw(max_y-2,60,"Treasure room");
+
+        //health
+        mvprintw(max_y-2,2,"health: ");
+        refresh();
+        for(int i =0;i<=health;i++){
+            mvprintw(max_y-2,10+i,"♥");
+            mvprintw(max_y-2,10+health," ");
+            for(int j=0;j<10-i;j++){
+                mvprintw(max_y-2,10+health+j," ");
+            }
+            mvprintw(max_y-2,10+12,"%d%c",health*10,'%');
+
+        }
+
+        //food
+        mvprintw(max_y-2,32,"food: ");
 
         for(int i =0;i<=food;i++){
-            mvprintw(max_y-2,30+i,"+");
-            mvprintw(max_y-2,30+food," ");
+            mvprintw(max_y-2,38+i,"+");
+            mvprintw(max_y-2,38+food," ");
+            mvprintw(max_y-2,38 + 12,"     ");
+            mvprintw(max_y-2,38 + 12,"%d%c",food*10,'%');
+            refresh();
         }
+        refresh();
 
-        mvprintw(max_y-2,48,"floor : Treasure Room");
         if(in_use_weapon==1){
-            mvprintw(max_y-2,72,"weapon: Mace");
+            mvprintw(max_y-2,76,"weapon: Mace");
         }
         else if(in_use_weapon==2){
-            mvprintw(max_y-2,72,"weapon: Dagger");
+            mvprintw(max_y-2,76,"weapon: Dagger");
         }
         else if(in_use_weapon==3){
-            mvprintw(max_y-2,72,"weapon: Magic Wand");
+            mvprintw(max_y-2,76,"weapon: Magic Wand");
         }
         else if(in_use_weapon==4){
-            mvprintw(max_y-2,72,"weapon: Normal Arrow");
+            mvprintw(max_y-2,76,"weapon: Normal Arrow");
         }
         else if(in_use_weapon==4){
-            mvprintw(max_y-2,72,"weapon: Sword");
+            mvprintw(max_y-2,76,"weapon: Sword");
         }
         else {
-            mvprintw(max_y-2,72,"weapon: no weapon in use!");
+            mvprintw(max_y-2,76,"weapon: no weapon in use!");
         }
 
 
