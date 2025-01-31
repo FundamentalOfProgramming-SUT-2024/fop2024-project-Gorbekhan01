@@ -132,7 +132,7 @@ int game_f4(struct user *current_user , int level);
 int treasure_room(struct user *current_user, int level);
 int food_bar(int* food1, int* health , int* food);
 int weapon(struct user *current_user);
-int spell(struct user *current_user);
+int potion(struct user *current_user);
 int pre_leaderboard(struct user *current_user);
 int lost(struct user *current_user);
 int victory(struct user *current_user);
@@ -518,7 +518,6 @@ int game_menu(char *username){
         mvprintw(center_y + 2, center_x-4, "══════════════════════════════");
         attroff(COLOR_PAIR(1) | A_BOLD);
         mvprintw(center_y+20,center_x , selected == 0 ? "[ start a new game ]" : "  start a new game  ");
-        mvprintw(center_y+22, center_x, selected == 1 ? "[ continue your last Game ]" : "  continue your last Game  ");
         refresh();
         key = getch();
 
@@ -526,12 +525,12 @@ int game_menu(char *username){
             case KEY_UP:
                 selected--;
                 if(selected < 0) {
-                    selected = 1;
+                    selected = 0;
                 }
                 break;
             case KEY_DOWN:
                 selected++;
-                if(selected > 1) {
+                if(selected > 0) {
                     selected = 0;
                 }
                 break;
@@ -539,9 +538,6 @@ int game_menu(char *username){
                 clear();
                 if(selected == 0) {
                     return 0;
-                }
-                else if(selected == 1) {
-                    return 1;
                 }
                 refresh();
                 getch();
@@ -566,10 +562,10 @@ int leaderboard(struct user *current_user) {
     int center_x = max_x / 2 - 40;
 
     const int COL_WIDTH = 15;
-    mvprintw(center_y, center_x + 25, "=== LEADERBOARD ===");
-    mvprintw(center_y + 2, center_x, "%-10s %-15s %-15s %-15s %-15s %-20s",
+    mvprintw(center_y, center_x + 24, "=== LEADERBOARD ===");
+    mvprintw(center_y + 2, center_x - 2, "%-10s %-15s %-15s %-15s %-15s %-20s",
              "Rank", "Username", "Score", "Gold", "Finished Games", "joined date");
-    mvprintw(center_y + 3, center_x, "-----------------------------------------------------------------------------------");
+    mvprintw(center_y + 3, center_x - 2, "-----------------------------------------------------------------------------------");
 
     FILE* fptr = fopen("leaderboard.txt", "r");
     if (fptr == NULL) {
@@ -607,7 +603,7 @@ int leaderboard(struct user *current_user) {
         fclose(fptr_write);
 
         attron(A_BOLD | A_BLINK);
-        mvprintw(center_y + 4, center_x, "%-10d %-15s %-15d %-15d %-15d %-20s",
+        mvprintw(center_y + 4, center_x -2, "%-10d %-15s %-15d %-15d %-15d %-20s",
                  current_user->rank,
                  current_user->username,
                  current_user->total_score,
@@ -620,7 +616,7 @@ int leaderboard(struct user *current_user) {
         mvprintw(center_y + 30, center_x, "New player added to leaderboard!");
         attroff(A_BOLD | COLOR_PAIR(2));
 
-        mvprintw(center_y + 30, center_x+10, "[ Press enter to start the game ]");
+        mvprintw(center_y + 30, center_x+ 8, "[ Press enter to start the game ]");
         refresh();
         getch();
         return 0;
@@ -642,13 +638,13 @@ int leaderboard(struct user *current_user) {
     while (fgets(tempi, 100, fptr) != NULL) {
         sscanf(tempi, "%d %s %d %d %d %s", &rank, username1, &total_score, &total_gold, &total_finished_games, total_time);
         if(rank==1){
-            mvprintw(center_y + 4 + k, center_x-3, "🥇");
+            mvprintw(center_y + 4 + k , center_x-5, "🥇");
         }
         if(rank==2){
-            mvprintw(center_y + 4 + k, center_x-3, "🥈");
+            mvprintw(center_y + 4 + k , center_x-5, "🥈");
         }
         if(rank==3){
-            mvprintw(center_y + 4 + k, center_x-3, "🥉");
+            mvprintw(center_y + 4 + k , center_x-5, "🥉");
         }
         if (strcmp(username1, current_user->username) == 0) {
             found = 1;
@@ -657,7 +653,7 @@ int leaderboard(struct user *current_user) {
             strcpy(current_user->joined_date, total_time);
             current_user->total_finished_games = total_finished_games;
             attron(A_BOLD | A_BLINK);
-            mvprintw(center_y + 4 + k, center_x, "%-10d %-15s %-15d %-15d %-15d %-20s",
+            mvprintw(center_y + 4 + k, center_x -2 , "%-10d %-15s %-15d %-15d %-15d %-20s",
                      rank,
                      current_user->username,
                      current_user->total_score,
@@ -666,7 +662,7 @@ int leaderboard(struct user *current_user) {
                      current_user->joined_date);
             attroff(A_BOLD | A_BLINK);
         } else {
-            mvprintw(center_y + 4 + k, center_x, "%-10d %-15s %-15d %-15d %-15d %-20s",
+            mvprintw(center_y + 4 + k, center_x -2, "%-10d %-15s %-15d %-15d %-15d %-20s",
                      rank,
                      username1,
                      total_score,
@@ -754,9 +750,9 @@ int gamesetting(struct user *current_user) {
             clear();
 
 
-            mvprintw(center_y - 6, center_x , "╔══════════════════════════════╗");
-            mvprintw(center_y - 5, center_x , "║   G A M E  S E T T I N G S   ║");
-            mvprintw(center_y - 4, center_x , "╚══════════════════════════════╝");
+            mvprintw(center_y - 9, center_x - 4  , "╔══════════════════════════════╗");
+            mvprintw(center_y - 8, center_x - 4, "║   G A M E  S E T T I N G S   ║");
+            mvprintw(center_y - 7, center_x - 4, "╚══════════════════════════════╝");
 
             attron(A_BOLD);
             attron(A_STANDOUT);
@@ -766,7 +762,7 @@ int gamesetting(struct user *current_user) {
 
             attron(A_BOLD);
             attron(A_STANDOUT);
-            mvprintw(center_y + 8, center_x , " Choose your character's color");
+            mvprintw(center_y + 8, center_x - 3 , " Choose your character's color");
             attroff(A_STANDOUT);
             attroff(A_BOLD);
 
@@ -775,10 +771,10 @@ int gamesetting(struct user *current_user) {
             for (int i = 0; i < n_choices; i++) {
                 if (current_menu == 0 && i == current_choice) {
                     attron(A_REVERSE);
-                    mvprintw(center_y + 1, level_start_x + i * 9, "%s", choices[i]);
+                    mvprintw(center_y + 1, level_start_x + i * 9 , "%s", choices[i]);
                     attroff(A_REVERSE);
                 } else {
-                    mvprintw(center_y + 1, level_start_x + i * 9, "%s", choices[i]);
+                    mvprintw(center_y + 1, level_start_x + i * 9 , "%s", choices[i]);
                 }
             }
 
@@ -787,17 +783,19 @@ int gamesetting(struct user *current_user) {
             for (int i = 0; i < n_choices+1; i++) {
                 if (current_menu == 1 && i == color_choice) {
                     attron(A_REVERSE);
-                    mvprintw(center_y + 11, color_start_x + i * 9, "%s", colors[i]);
+                    mvprintw(center_y + 11, color_start_x + i * 9 - 5, "%s", colors[i]);
                     attroff(A_REVERSE);
                 } else {
-                    mvprintw(center_y + 11, color_start_x + i * 9, "%s", colors[i]);
+                    mvprintw(center_y + 11, color_start_x + i * 9 - 5, "%s", colors[i]);
                 }
             }
 
             attron(A_BOLD);
             attron(A_STANDOUT);
-            mvprintw(center_y + 20, center_x , "[ Press Enter to start the game ]");
+            mvprintw(center_y + 20, center_x - 4 , "[ Press Enter to start the game ]");
             attroff(A_STANDOUT);
+            mvprintw(center_y + 24 , center_x - 9 , "use -> and <- to move between options and then press enter");
+
             attroff(A_BOLD);
 
             refresh();
@@ -1160,6 +1158,7 @@ int code(char password[]){
     keypad(stdscr, TRUE);
     refresh();
     cbreak();
+    echo();
     clear();
     start_color();
     curs_set(1);
@@ -1169,20 +1168,20 @@ int code(char password[]){
     int center_y = max_y / 2 - 7;
     int center_x = max_x / 2 - 15;
     char pass[100];
-    mvprintw(center_y+2,center_x+12,"E N T E R  T H E  P A S S W O R D");
-    move(center_y + 4, center_x + 12);
+    mvprintw(center_y+2,center_x - 4,"E N T E R  T H E  P A S S W O R D");
+    move(center_y + 4, center_x -4);
     getstr(pass);
     int check=0;
     if(strcmp(pass,password)==0){
-        mvprintw(center_y+10,center_x+12,"Password is correct!");
+        mvprintw(center_y+10,center_x-4,"Password is correct!");
         check++;
 
     }
     else {
-        mvprintw(center_y+10,center_x+12,"Password is wrong!");
+        mvprintw(center_y+10,center_x-4,"Password is wrong!");
     }
 
-    mvprintw(center_y+12,center_x+12,"press any key to back");
+    mvprintw(center_y+12,center_x -4,"press any key to back");
     getch();
     if(check==0){
         clear();
@@ -1196,7 +1195,7 @@ int code(char password[]){
 
 
 }
-int spell(struct user *current_user){
+int potion(struct user *current_user){
     initscr();
     keypad(stdscr, TRUE);
     refresh();
@@ -1216,19 +1215,19 @@ int spell(struct user *current_user){
     init_pair(3,COLOR_GREEN,COLOR_BLACK);
 
     while(1) {
-        mvprintw(center_y-4,center_x-4,"** S P E L L S ***************************");
+        mvprintw(center_y-4,center_x-4,"** Potions ***************************");
 
-        mvprintw(center_y, center_x, selected == 0 ? "> Health Spell   count: %d" : "  Health Spell   count: %d",current_user->spells.health_spell);
+        mvprintw(center_y, center_x, selected == 0 ? "> Health potion   count: %d" : "  Health potion   count: %d",current_user->spells.health_spell);
         attron(COLOR_PAIR(1));
         mvprintw(center_y, center_x-2, "%lc", (wint_t)0x271A);
         attroff(COLOR_PAIR(1));
 
-        mvprintw(center_y+2, center_x, selected == 1 ? "> Speed Spell   count: %d" : "  Speed Spell   count: %d",current_user->spells.speed_spell);
+        mvprintw(center_y+2, center_x, selected == 1 ? "> Speed potion   count: %d" : "  Speed potion   count: %d",current_user->spells.speed_spell);
         attron(COLOR_PAIR(2));
         mvprintw(center_y+2,center_x-2, "%lc", (wint_t)0x27A4);
         attroff(COLOR_PAIR(2));
 
-        mvprintw(center_y+4, center_x, selected == 2 ? "> Damage Spell   count: %d" : "  Damage Spell   count: %d",current_user->spells.damage_spell);
+        mvprintw(center_y+4, center_x, selected == 2 ? "> Damage potion   count: %d" : "  Damage potion   count: %d",current_user->spells.damage_spell);
         init_color(24, 1000, 200, 0);
         init_pair(45,24,COLOR_BLACK);
         attron(COLOR_PAIR(45));
@@ -1237,7 +1236,7 @@ int spell(struct user *current_user){
 
         mvprintw(center_y+8, center_x-4, "************* ************* *************");
 
-        mvprintw(center_y+16, center_x, "-- Use KEY UP & KEY DOWN to choose food --");
+        mvprintw(center_y+16, center_x, "-- Use KEY UP & KEY DOWN to choose potion --");
         mvprintw(center_y+18, center_x, "-- Press ENTER to eat! --");
         mvprintw(center_y+20, center_x, "-- Press Q to exit --");
         refresh();
@@ -1286,8 +1285,8 @@ int spell(struct user *current_user){
                 refresh();
                 break;
         }
-        getch();
     }
+    getch();
 
 }
 
@@ -2193,7 +2192,7 @@ int game_f1(struct user *current_user, int level) {
         } else {
             k=1;
         }
-        mvprintw(2,100,"[h] to open help menu");
+        mvprintw(2,max_x-20,"[h] to open help menu");
 
 
 
@@ -2206,18 +2205,18 @@ int game_f1(struct user *current_user, int level) {
 
 
             if(map[new_y][new_x]=='b'){
-                mvprintw(2,3,"You claimed a Health spell              ");
+                mvprintw(2,3,"You claimed a Health potion              ");
                 current_user->spells.health_spell++;
             }
 
             if(map[new_y][new_x]=='n'){
-                mvprintw(2,3,"You claimed a Speed spell              ");
+                mvprintw(2,3,"You claimed a Speed potion              ");
                 current_user->spells.speed_spell++;
 
             }
 
             if(map[new_y][new_x]=='m'){
-                mvprintw(2,3,"You claimed a Damage spell              ");
+                mvprintw(2,3,"You claimed a Damage potion             ");
                 current_user->spells.damage_spell++;
             }
 
@@ -2326,7 +2325,7 @@ int game_f1(struct user *current_user, int level) {
 
 
         if(c=='o'){
-            spell(current_user);
+            potion(current_user);
         }
 
 
@@ -2375,7 +2374,7 @@ int game_f1(struct user *current_user, int level) {
                 new_x_f = xf;
                 new_y_f = yf;
 
-                if((abs(fx)<=3 || abs(fy)<=3 )){
+                if((abs(fx)<=6 || abs(fy)<=6 )){
                     if (abs(fx) > abs(fy)) {
                         if (fx > 0) {
                             new_x_f += 1;
@@ -3870,7 +3869,7 @@ int game_f2(struct user *current_user , int level) {
         }
 
         ///movement
-        mvprintw(2,100,"[h] to open help menu");
+        mvprintw(2,max_x-20,"[h] to open help menu");
 
         if(current_user->spells.speed_spell_counter>0){
             if (c == KEY_UP && y > 0) new_y-=2;
@@ -4028,7 +4027,7 @@ int game_f2(struct user *current_user , int level) {
         }
 
         if(c=='o'){
-            spell(current_user);
+            potion(current_user);
         }
 
         mvprintw(max_y-2,max_x-10,"GOLD: %d",current_user->new_golds+total_black_gold+total_yellow_gold);
@@ -4072,7 +4071,7 @@ int game_f2(struct user *current_user , int level) {
                     new_x_f2 = xf2;
                     new_y_f2 = yf2;
 
-                    if((abs(fx2)<=3 || abs(fy2)<=3 )){
+                    if((abs(fx2)<=6 || abs(fy2)<=6 )){
                         if (abs(fx2) > abs(fy2)) {
                             if (fx2 > 0) {
                                 new_x_f2 += 1;
@@ -5685,7 +5684,7 @@ int game_f3(struct user *current_user , int level) {
             if (c == KEY_LEFT && x > 0) new_x--;
 
         }
-        mvprintw(2,100,"[h] to open help menu");
+        mvprintw(2,max_x-20,"[h] to open help menu");
 
         if(current_user->spells.damage_spell_counter>0){
             k=2;
@@ -5826,7 +5825,7 @@ int game_f3(struct user *current_user , int level) {
             map[y][x]='.';
         }
         if(c=='o'){
-            spell(current_user);
+            potion(current_user);
         }
 
         mvprintw(max_y-2,max_x-10,"GOLD: %d",current_user->new_golds+total_black_gold+total_yellow_gold);
@@ -5872,7 +5871,7 @@ int game_f3(struct user *current_user , int level) {
                 new_x_f = xf;
                 new_y_f = yf;
 
-                if((abs(fx)<=3 || abs(fy)<=3 )){
+                if((abs(fx)<=6 || abs(fy)<=6 )){
                     if (abs(fx) > abs(fy)) {
                         if (fx > 0) {
                             new_x_f += 1;
@@ -6043,7 +6042,6 @@ int game_f3(struct user *current_user , int level) {
 
 
 
-        mvprintw(5,3,"                                                                ");
         int dx = xd - new_x;
         int dy = yd - new_y;
         fx = new_x_f -  new_x;
@@ -7508,7 +7506,7 @@ int game_f4(struct user *current_user, int level) {
             if (c == KEY_LEFT && x > 0) new_x--;
 
         }
-        mvprintw(2,100,"[h] to open help menu");
+        mvprintw(2,max_x-20,"[h] to open help menu");
 
 
         if(current_user->spells.damage_spell_counter>0){
@@ -7657,7 +7655,7 @@ int game_f4(struct user *current_user, int level) {
         }
 
         if(c=='o'){
-            spell(current_user);
+            potion(current_user);
         }
 
 
@@ -7705,7 +7703,7 @@ int game_f4(struct user *current_user, int level) {
                 new_x_f = xf;
                 new_y_f = yf;
 
-                if((abs(fx)<=3 || abs(fy)<=3 )){
+                if((abs(fx)<=6 || abs(fy)<=6 )){
                     if (abs(fx) > abs(fy)) {
                         if (fx > 0) {
                             new_x_f += 1;
@@ -7880,8 +7878,6 @@ int game_f4(struct user *current_user, int level) {
         init_pair(14,COLOR_RED,COLOR_BLACK);
 
 
-
-        mvprintw(5,3,"                                                                ");
         int dx = xd - new_x;
         int dy = yd - new_y;
         fx = new_x_f -  new_x;
@@ -9035,7 +9031,7 @@ int treasure_room(struct user *current_user , int level){
             }
             c = getch();
         }
-        mvprintw(2,100,"[h] to open help menu");
+        mvprintw(2,max_x-20,"[h] to open help menu");
 
         ///movement
 
@@ -9187,7 +9183,7 @@ int treasure_room(struct user *current_user , int level){
         }
 
         if(c=='o'){
-            spell(current_user);
+            potion(current_user);
         }
 
         mvprintw(max_y-2,max_x-10,"GOLD: %d",current_user->new_golds+total_black_gold+total_yellow_gold);
@@ -9231,7 +9227,7 @@ int treasure_room(struct user *current_user , int level){
                 new_x_f = xf;
                 new_y_f = yf;
 
-                if((abs(fx)<=3 || abs(fy)<=3 )){
+                if((abs(fx)<=6 || abs(fy)<=6 )){
                     if (abs(fx) > abs(fy)) {
                         if (fx > 0) {
                             new_x_f += 1;
@@ -9279,45 +9275,49 @@ int treasure_room(struct user *current_user , int level){
 
         if(giant_health>0){
 
-            if(room_number[new_y][new_x] == room_number[yg][xg]  ) {
+            int new_x_g , new_y_g;
+            int gx = new_x - xg;
+            int gy = new_y - yg;
 
-                new_x_g = xg;
-                new_y_g = yg;
+            if(giant_health>0){
+                if(room_number[new_y][new_x] == room_number[yf][xf]  ) {
+                    new_x_g = xg;
+                    new_y_g = yg;
 
-                if((abs(gx)<=10 || abs(gy)<=10 )){
                     if (abs(gx) > abs(gy)) {
                         if (gx > 0) {
-                            new_x_g += 1;
+                            new_x_g = new_x+1;
                         } else {
-                            new_x_g -= 1;
+                            new_x_g = new_x-1;
                         }
+                        new_y_g=new_y;
                     } else {
                         if (gy > 0) {
-                            new_y_g += 1;
+                            new_y_g = new_y+1;
                         } else {
-                            new_y_g -= 1;
+                            new_y_g = new_y-1;
                         }
+                        new_x_g=new_x;
                     }
 
+                    move_giant(new_y_g, new_x_g);
+                }
+                refresh();
+
+                if(giant_health>=0 && new_x_g==new_x && new_y_g==new_y){
+                    if(current_user->game_setting.game_level==0){
+                        health -= 1;
+                    } else{
+                        health -= 2;
+                    }
+                    mvprintw(3,3,"Giant hits you!                                     ");
+                    if(health<0){
+                        health=0;
+                    }
                 }
 
-                move_giant(new_y_g, new_x_g);
+
             }
-            refresh();
-
-            if(giant_health>=0 && new_x_g==new_x && new_y_g==new_y){
-                if(current_user->game_setting.game_level==0){
-                    health -= 1;
-                } else{
-                    health -= 2;
-                }
-                mvprintw(3,3,"Giant hits you!                                ");
-                if(health<0){
-                    health=0;
-                }
-            }
-
-
         }
 
         ///undeed
@@ -9327,13 +9327,12 @@ int treasure_room(struct user *current_user , int level){
 
         if(undeed_health>0){
 
-            if(room_number[new_y][new_x] == room_number[yg][xg]  ) {
+            if( abs(ux)==1 || abs(ux)==0 &&  abs(uy)==1 || abs(uy)==0) {
 
                 new_x_u = xu;
                 new_y_u = yu;
 
-                if((abs(ux)<=20 || abs(uy)<=20 )){
-                    if (abs(ux) > abs(uy)) {
+                if (abs(ux) > abs(uy)) {
                         if (ux > 0) {
                             new_x_u += 1;
                         } else {
@@ -9346,9 +9345,6 @@ int treasure_room(struct user *current_user , int level){
                             new_y_u -= 1;
                         }
                     }
-
-                }
-
                 move_undeed(new_y_u, new_x_u);
             }
             refresh();
