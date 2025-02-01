@@ -302,7 +302,7 @@ int old_user(char *username) {
     mvprintw(center_y + 13, center_x-1, "(  /  )");
     mvprintw(center_y + 14, center_x-1, " \\(__)|");
     mvprintw(center_y + 14, center_x-1, " \\(__)|");
-    mvprintw(center_y + 18, center_x-20, "❗if you forget your password enter < forget > in password section!");
+    mvprintw(center_y + 18, center_x-20, "❗if you forgot your password enter < forgot > in password section!");
 
     mvprintw(center_y + 4, center_x, "◦ Username: ");
     mvprintw(center_y + 6, center_x, "◦ Password: ");
@@ -359,7 +359,7 @@ int old_user(char *username) {
         len = strlen(password);
         if (len < 7) {
             refresh();
-            if (strcmp("forget", password) == 0) {
+            if (strcmp("forgot", password) == 0) {
                 mvprintw(center_y + 12, center_x + 9, "Your password is < %s >",temp_password);
 
             }
@@ -414,7 +414,7 @@ int new_user(char *username) {
     int temp = 0;
     FILE *fptr = fopen("users.txt", "r");
     if (fptr == NULL) {
-        FILE *fptr = fopen("users.txt", "w");
+        fptr = fopen("users.txt", "w");
         refresh();
     }
     //taken username !!!!
@@ -9302,8 +9302,11 @@ int treasure_room(struct user *current_user , int level){
                     }
 
                 }
+                if(map[new_y_f][new_x_f]!=' '){
+                    move_fire_breathing_monster(new_y_f, new_x_f);
 
-                move_fire_breathing_monster(new_y_f, new_x_f);
+                }
+
             }
             refresh();
 
@@ -9356,8 +9359,9 @@ int treasure_room(struct user *current_user , int level){
                         }
                         new_x_g=new_x;
                     }
-
-                    move_giant(new_y_g, new_x_g);
+                    if(map[new_y_g][new_x_g]!=' '){
+                        move_giant(new_y_g, new_x_g);
+                    }
                 }
                 refresh();
 
@@ -9402,7 +9406,11 @@ int treasure_room(struct user *current_user , int level){
                             new_y_u -= 1;
                         }
                     }
-                move_undeed(new_y_u, new_x_u);
+                if(map[new_y_u][new_x_u]!=' '){
+                    move_undeed(new_y_u, new_x_u);
+
+                }
+
             }
             refresh();
 
@@ -10216,7 +10224,6 @@ int victory(struct user *current_user){
     cbreak();
     clear();
     start_color();
-    curs_set(0);
     init_pair(1, COLOR_WHITE, COLOR_BLACK);
     int max_y, max_x;
     getmaxyx(stdscr, max_y, max_x);
@@ -10224,6 +10231,8 @@ int victory(struct user *current_user){
     int center_x = max_x / 2 - 15;
     int selected =0;
     int key;
+    int tempi = current_user->game_setting.game_level;
+    int temp = current_user->new_golds*(1 + tempi)*10;
     while(1) {
         clear();
         attron(COLOR_PAIR(1) | A_BOLD);
@@ -10234,8 +10243,8 @@ int victory(struct user *current_user){
         mvprintw(center_y + 2, center_x-4, "══════════════════════════════");
         attroff(COLOR_PAIR(1) | A_BOLD);
         mvprintw(center_y + 6, center_x-4, "Total received Golds: %d",current_user->new_golds);
-        mvprintw(center_y + 8, center_x-4, "Total score: %d ", current_user->new_golds*(1 + current_user->game_setting.game_level)*10); ///total new gold * game level + new gold * 15
-        current_user->total_score+=current_user->new_golds*(1 + current_user->game_setting.game_level)*10;
+        mvprintw(center_y + 8, center_x-4, "Total score: %d ", temp); ///total new gold * game level + new gold * 15
+        current_user->total_score+=temp;
         mvprintw(center_y+20,center_x , selected == 0 ? "[ back to leaderboard ]" : "back to leaderboard");
         refresh();
         key = getch();
@@ -10264,10 +10273,14 @@ int lost(struct user *current_user){
     int center_x = max_x / 2 - 15;
     int selected =0;
     int key;
+    int tempi=current_user->game_setting.game_level;
+    int temp =  current_user->new_golds * (1 + tempi) *5;
+    current_user->total_score= current_user->total_score +temp ;
     while(1) {
         clear();
-        mvprintw(center_y + 10, center_x, "Total score: %d ", (current_user->new_golds* 1 + current_user->new_golds*current_user->game_setting.game_level)*5) ; ///total new gold * game level + new gold * 10
-        current_user->total_score= current_user->total_score + (current_user->new_golds* 1 + current_user->new_golds*current_user->game_setting.game_level)*5 ;
+        mvprintw(center_y + 10, center_x, "Total score: %d",temp) ;
+        mvprintw(center_y + 12, center_x, "Claimed Golds: %d",current_user->new_golds) ;
+        ///total new gold * game level + new gold * 10
         attron(COLOR_PAIR(1) | A_BOLD);
         mvprintw(center_y - 2, center_x-4, "══════════════════════════════");
         attron(COLOR_PAIR(1) | A_BOLD | A_BLINK);
