@@ -634,7 +634,7 @@ int leaderboard(struct user *current_user) {
         mvprintw(center_y + 30, center_x, "New player added to leaderboard!");
         attroff(A_BOLD | COLOR_PAIR(2));
 
-        mvprintw(center_y + 30, center_x+ 8, "[ Press enter to start the game ]");
+        mvprintw(center_y + 30, center_x, "[ Press enter to start the game ]");
         refresh();
         getch();
         return 0;
@@ -4406,7 +4406,7 @@ int game_f2(struct user *current_user , int level) {
             if(xfor2 == xd && yfor2 == yd) {
                 deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
-                mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
+                mvprintw(3, 3, "You hit Deamon!  health: %d/5                                    ", deamon_health);
                 counterfor2=0;
                 start_dagger=0;
             }
@@ -6280,7 +6280,6 @@ int game_f3(struct user *current_user , int level) {
             if(map[yfor2][xfor2]=='.'){
                 mvaddch(yfor2, xfor2, '*');
             }
-            mvprintw(3, 3, "                                                            ");
             refresh();
         }
         ////////////
@@ -8130,7 +8129,6 @@ int game_f4(struct user *current_user, int level) {
             if(map[yfor2][xfor2]=='.'){
                 mvaddch(yfor2, xfor2, '*');
             }
-            mvprintw(3, 3, "                                                            ");
             refresh();
         }
         ////////////
@@ -9742,7 +9740,6 @@ int treasure_room(struct user *current_user , int level){
             if(map[yfor2][xfor2]=='.'){
                 mvaddch(yfor2, xfor2, '*');
             }
-            mvprintw(3, 3, "                                                            ");
             refresh();
         }
         ////////////
