@@ -2221,18 +2221,18 @@ int game_f1(struct user *current_user, int level) {
 
 
             if(map[new_y][new_x]=='b'){
-                mvprintw(2,3,"You claimed a Health potion              ");
+                mvprintw(2,3,"You found a Health potion !              ");
                 current_user->spells.health_spell++;
             }
 
             if(map[new_y][new_x]=='n'){
-                mvprintw(2,3,"You claimed a Speed potion              ");
+                mvprintw(2,3,"You found a Speed potion !             ");
                 current_user->spells.speed_spell++;
 
             }
 
             if(map[new_y][new_x]=='m'){
-                mvprintw(2,3,"You claimed a Damage potion             ");
+                mvprintw(2,3,"You found a Damage potion !           ");
                 current_user->spells.damage_spell++;
             }
 
@@ -2253,17 +2253,17 @@ int game_f1(struct user *current_user, int level) {
 
             if(map[new_y][new_x] == '$'){
                 int temp = 2 + (rand() % 3 );
-                mvprintw(2,3,"You claimed %d GOLDS !            ",temp);
+                mvprintw(2,3,"You collected %d GOLDS !            ",temp);
                 total_yellow_gold+= temp;
             }
             if(map[new_y][new_x] == '@'){
                 int temp = 6 + (rand() % 4 );
-                mvprintw(2,3,"You claimed %d GOLDS !            ",temp);
+                mvprintw(2,3,"You collected %d GOLDS !            ",temp);
                 total_black_gold+= temp;
             }
             if(map[new_y][new_x] == 'F'){
                 int temp = 1;
-                mvprintw(2,3,"You claimed %d FOOD !             ",temp);
+                mvprintw(2,3,"You collected %d FOOD !             ",temp);
                 food1+= 1;
                if(food1>5){
                    food1=5;
@@ -2327,7 +2327,7 @@ int game_f1(struct user *current_user, int level) {
 
             if(map[new_y][new_x] == '5'){
                 current_user->weapons.Sword=1;
-                mvprintw(2,3,"You found a Sword!                   ");
+                mvprintw(2,3,"You found a Sword !                  ");
             }
             y = new_y;
             x = new_x;
@@ -3932,18 +3932,18 @@ int game_f2(struct user *current_user , int level) {
 
 
             if(map[new_y][new_x]=='b'){
-                mvprintw(2,3,"You claimed a Health potion              ");
+                mvprintw(2,3,"You found a Health potion !            ");
                 current_user->spells.health_spell++;
             }
 
             if(map[new_y][new_x]=='n'){
-                mvprintw(2,3,"You claimed a Speed potion              ");
+                mvprintw(2,3,"You found a Speed potion !             ");
                 current_user->spells.speed_spell++;
 
             }
 
             if(map[new_y][new_x]=='m'){
-                mvprintw(2,3,"You claimed a Damage potion              ");
+                mvprintw(2,3,"You found a Damage potion !             ");
                 current_user->spells.damage_spell++;
             }
 
@@ -3964,17 +3964,17 @@ int game_f2(struct user *current_user , int level) {
 
             if(map[new_y][new_x] == '$'){
                 int temp = 2 + (rand() % 3 );
-                mvprintw(2,3,"You claimed %d GOLDS !            ",temp);
+                mvprintw(2,3,"You collected %d GOLDS !            ",temp);
                 total_yellow_gold+= temp;
             }
             if(map[new_y][new_x] == '@'){
                 int temp = 6 + (rand() % 4 );
-                mvprintw(2,3,"You claimed %d GOLDS !            ",temp);
+                mvprintw(2,3,"You collected %d GOLDS !            ",temp);
                 total_black_gold+= temp;
             }
             if(map[new_y][new_x] == 'F'){
                 int temp = 1;
-                mvprintw(2,3,"You claimed %d FOOD !             ",temp);
+                mvprintw(2,3,"You collected %d FOOD !             ",temp);
                 food1+= 1;
                 if(food1>5){
                     food1=5;
@@ -5746,18 +5746,18 @@ int game_f3(struct user *current_user , int level) {
 
 
             if(map[new_y][new_x]=='b'){
-                mvprintw(2,3,"You claimed a Health potion              ");
+                mvprintw(2,3,"You found a Health potion !             ");
                 current_user->spells.health_spell++;
             }
 
             if(map[new_y][new_x]=='n'){
-                mvprintw(2,3,"You claimed a Speed potion              ");
+                mvprintw(2,3,"You found a Speed potion !             ");
                 current_user->spells.speed_spell++;
 
             }
 
             if(map[new_y][new_x]=='m'){
-                mvprintw(2,3,"You claimed a Damage potion              ");
+                mvprintw(2,3,"You found a Damage potion !             ");
                 current_user->spells.damage_spell++;
             }
 
@@ -5778,17 +5778,17 @@ int game_f3(struct user *current_user , int level) {
 
             if(map[new_y][new_x] == '$'){
                 int temp = 2 + (rand() % 3 );
-                mvprintw(2,3,"You claimed %d GOLDS !            ",temp);
+                mvprintw(2,3,"You collected %d GOLDS !            ",temp);
                 total_yellow_gold+= temp;
             }
             if(map[new_y][new_x] == '@'){
                 int temp = 6 + (rand() % 4 );
-                mvprintw(2,3,"You claimed %d GOLDS !            ",temp);
+                mvprintw(2,3,"You collected %d GOLDS !            ",temp);
                 total_black_gold+= temp;
             }
             if(map[new_y][new_x] == 'F'){
                 int temp = 1;
-                mvprintw(2,3,"You claimed %d FOOD !             ",temp);
+                mvprintw(2,3,"You collected %d FOOD !             ",temp);
                 food1+= 1;
                 if(food1>5){
                     food1=5;
@@ -7588,18 +7588,18 @@ int game_f4(struct user *current_user, int level) {
 
 
             if(map[new_y][new_x]=='b'){
-                mvprintw(2,3,"You claimed a Health potion              ");
+                mvprintw(2,3,"You found a Health potion !              ");
                 current_user->spells.health_spell++;
             }
 
             if(map[new_y][new_x]=='n'){
-                mvprintw(2,3,"You claimed a Speed potion              ");
+                mvprintw(2,3,"You found a Speed potion !             ");
                 current_user->spells.speed_spell++;
 
             }
 
             if(map[new_y][new_x]=='m'){
-                mvprintw(2,3,"You claimed a Damage potion              ");
+                mvprintw(2,3,"You found a Damage potion !             ");
                 current_user->spells.damage_spell++;
             }
 
@@ -7620,17 +7620,17 @@ int game_f4(struct user *current_user, int level) {
 
             if(map[new_y][new_x] == '$'){
                 int temp = 2 + (rand() % 3 );
-                mvprintw(2,3,"You claimed %d GOLDS !            ",temp);
+                mvprintw(2,3,"You collected %d GOLDS !            ",temp);
                 total_yellow_gold+= temp;
             }
             if(map[new_y][new_x] == '@'){
                 int temp = 6 + (rand() % 4 );
-                mvprintw(2,3,"You claimed %d GOLDS !            ",temp);
+                mvprintw(2,3,"You collected %d GOLDS !            ",temp);
                 total_black_gold+= temp;
             }
             if(map[new_y][new_x] == 'F'){
                 int temp = 1;
-                mvprintw(2,3,"You claimed %d FOOD !             ",temp);
+                mvprintw(2,3,"You collected %d FOOD !             ",temp);
                 food1+= 1;
                 if(food1>5){
                     food1=5;
@@ -9129,18 +9129,18 @@ int treasure_room(struct user *current_user , int level){
             mvprintw(2,1,"  ");
 
             if(map[new_y][new_x]=='b'){
-                mvprintw(2,3,"You claimed a Health potion              ");
+                mvprintw(2,3,"You found a Health potion !             ");
                 current_user->spells.health_spell++;
             }
 
             if(map[new_y][new_x]=='n'){
-                mvprintw(2,3,"You claimed a Speed potion              ");
+                mvprintw(2,3,"You found a Speed potion !             ");
                 current_user->spells.speed_spell++;
 
             }
 
             if(map[new_y][new_x]=='m'){
-                mvprintw(2,3,"You claimed a Damage potion              ");
+                mvprintw(2,3,"You found a Damage potion !             ");
                 current_user->spells.damage_spell++;
             }
 
@@ -9157,17 +9157,17 @@ int treasure_room(struct user *current_user , int level){
 
             if(map[new_y][new_x] == '$'){
                 int temp = 2 + (rand() % 3 );
-                mvprintw(2,3,"You claimed %d GOLDS !            ",temp);
+                mvprintw(2,3,"You collected %d GOLDS !            ",temp);
                 total_yellow_gold+= temp;
             }
             if(map[new_y][new_x] == '@'){
                 int temp = 6 + (rand() % 4 );
-                mvprintw(2,3,"You claimed %d GOLDS !            ",temp);
+                mvprintw(2,3,"You collected %d GOLDS !            ",temp);
                 total_black_gold+= temp;
             }
             if(map[new_y][new_x] == 'F'){
                 int temp = 1;
-                mvprintw(2,3,"You claimed %d FOOD !             ",temp);
+                mvprintw(2,3,"You collected %d FOOD !             ",temp);
                 food1+= 1;
                 if(food1>5){
                     food1=5;
@@ -10233,6 +10233,7 @@ int victory(struct user *current_user){
     int key;
     int tempi = current_user->game_setting.game_level;
     int temp = current_user->new_golds*(1 + tempi)*10;
+    current_user->total_score+=temp;
     while(1) {
         clear();
         attron(COLOR_PAIR(1) | A_BOLD);
@@ -10242,9 +10243,8 @@ int victory(struct user *current_user){
         attroff(COLOR_PAIR(1) | A_BOLD | A_BLINK);
         mvprintw(center_y + 2, center_x-4, "══════════════════════════════");
         attroff(COLOR_PAIR(1) | A_BOLD);
-        mvprintw(center_y + 6, center_x-4, "Total received Golds: %d",current_user->new_golds);
+        mvprintw(center_y + 6, center_x-4, "Earned Golds: %d",current_user->new_golds);
         mvprintw(center_y + 8, center_x-4, "Total score: %d ", temp); ///total new gold * game level + new gold * 15
-        current_user->total_score+=temp;
         mvprintw(center_y+20,center_x , selected == 0 ? "[ back to leaderboard ]" : "back to leaderboard");
         refresh();
         key = getch();
@@ -10279,7 +10279,7 @@ int lost(struct user *current_user){
     while(1) {
         clear();
         mvprintw(center_y + 10, center_x, "Total score: %d",temp) ;
-        mvprintw(center_y + 12, center_x, "Claimed Golds: %d",current_user->new_golds) ;
+        mvprintw(center_y + 12, center_x, "Earned Golds: %d",current_user->new_golds) ;
         ///total new gold * game level + new gold * 10
         attron(COLOR_PAIR(1) | A_BOLD);
         mvprintw(center_y - 2, center_x-4, "══════════════════════════════");
