@@ -5,7 +5,55 @@
 #include <string.h>
 #include <wchar.h>
 #include <time.h>
-#include <math.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_audio.h>
+
+
+///music
+SDL_AudioDeviceID device = 0;
+Uint8* audio_buffer = NULL;
+Uint32 audio_length = 0;
+SDL_AudioSpec audio_spec;
+
+void play_background_music(const char* music_file) {
+    if (!device) {
+        if (SDL_Init(SDL_INIT_AUDIO) < 0) {
+            printf("SDL init failed\n");
+            return;
+        }
+    }
+
+    if (SDL_LoadWAV(music_file, &audio_spec, &audio_buffer, &audio_length) == NULL) {
+        printf("Failed to load WAV\n");
+        return;
+    }
+
+    device = SDL_OpenAudioDevice(NULL, 0, &audio_spec, NULL, 0);
+    SDL_QueueAudio(device, audio_buffer, audio_length);
+    SDL_PauseAudioDevice(device, 0);
+}
+
+void check_and_replay_music() {
+    if (device) {
+        Uint32 queued = SDL_GetQueuedAudioSize(device);
+        if (queued == 0) {
+            SDL_QueueAudio(device, audio_buffer, audio_length);
+        }
+    }
+}
+
+void stop_background_music() {
+    if (device) {
+        SDL_CloseAudioDevice(device);
+        device = 0;
+    }
+    if (audio_buffer) {
+        SDL_FreeWAV(audio_buffer);
+        audio_buffer = NULL;
+    }
+    SDL_Quit();
+}
+///
 
 void move_deamon(int y, int x ){
     init_pair(1, COLOR_MAGENTA,COLOR_BLACK);
@@ -134,7 +182,7 @@ int food_bar(int* food1, int* health , int* food);
 int weapon(struct user *current_user , int in_use);
 int potion(struct user *current_user);
 int pre_leaderboard(struct user *current_user);
-int lost(struct user *current_user);
+int gameover(struct user *current_user);
 int victory(struct user *current_user);
 
 
@@ -160,7 +208,7 @@ int main() {
             help();
             int result_game = game_f1(&current_user,current_user.game_setting.game_level);
                 if (result_game == 0) {
-                    if(lost(&current_user)==1){
+                    if(gameover(&current_user)==1){
                         repeat = 0;
                     }
                     else {
@@ -208,7 +256,7 @@ void opening() {
     mvprintw(center_y + 13, center_x + 3, "############");
     sleep(1);
     refresh();
-    mvprintw(center_y + 13, center_x + 3, "########################");
+    mvprintw(center_y + 13, center_x + 3, "######################");
 
 
     refresh();
@@ -731,7 +779,7 @@ int leaderboard(struct user *current_user) {
     }
 
     fclose(fptr);
-    mvprintw(center_y + 30, center_x+10, "[ Press enter to start the game ]");
+    mvprintw(center_y + 30, center_x+15, "[ Press enter to start the game ]");
     refresh();
     getch();
     return 0;
@@ -739,15 +787,6 @@ int leaderboard(struct user *current_user) {
 
 
 int gamesetting(struct user *current_user) {
-    char *choices[] = {"easy", "medium", "hard"};
-    char *colors[] = {"white", "cyan", "green","SPECIAL!"};
-
-    int n_choices = 3;
-    int current_choice = 0;
-    int color_choice = 0;
-    int current_menu = 0;
-    int ch;
-
     initscr();
     clear();
     noecho();
@@ -755,102 +794,111 @@ int gamesetting(struct user *current_user) {
     keypad(stdscr, TRUE);
     curs_set(0);
 
+    start_color();
+    init_pair(1, COLOR_WHITE, COLOR_BLACK);
+    init_pair(2, COLOR_BLACK, COLOR_WHITE);
+
+    int current_menu = 0;
+    int level_choice = 0;
+    int color_choice = 0;
+    int music_choice = 0;
+
     int max_y, max_x;
     getmaxyx(stdscr, max_y, max_x);
     int center_y = max_y / 2 - 7;
     int center_x = max_x / 2 - 15;
 
-    start_color();
-    init_pair(1, COLOR_WHITE, COLOR_BLACK);
-    init_pair(2, COLOR_BLACK, COLOR_WHITE);
+    while (1) {
+        clear();
 
-        while (1) {
-            clear();
+        mvprintw(center_y - 9, center_x - 4, "╔══════════════════════════════╗");
+        mvprintw(center_y - 8, center_x - 4, "║   G A M E  S E T T I N G S   ║");
+        mvprintw(center_y - 7, center_x - 4, "╚══════════════════════════════╝");
 
+        attron(A_BOLD);
+        mvprintw(center_y - 2, center_x, " Choose the game level ");
+        mvprintw(center_y + 6, center_x - 3, " Choose your character's color ");
+        mvprintw(center_y + 14, center_x + 4, " Choose music ");
+        attroff(A_BOLD );
 
-            mvprintw(center_y - 9, center_x - 4  , "╔══════════════════════════════╗");
-            mvprintw(center_y - 8, center_x - 4, "║   G A M E  S E T T I N G S   ║");
-            mvprintw(center_y - 7, center_x - 4, "╚══════════════════════════════╝");
-
-            attron(A_BOLD);
+        if(current_menu==0){
             attron(A_STANDOUT);
-            mvprintw(center_y - 2, center_x , " Choose the game level");
+            mvprintw(center_y - 2, center_x, " Choose the game level ");
             attroff(A_STANDOUT);
-            attroff(A_BOLD);
 
-            attron(A_BOLD);
+        }
+        if(current_menu==1){
             attron(A_STANDOUT);
-            mvprintw(center_y + 8, center_x - 3 , " Choose your character's color");
+            mvprintw(center_y + 6, center_x - 3, " Choose your character's color ");
             attroff(A_STANDOUT);
-            attroff(A_BOLD);
-
-
-            int level_start_x = center_x ;
-            for (int i = 0; i < n_choices; i++) {
-                if (current_menu == 0 && i == current_choice) {
-                    attron(A_REVERSE);
-                    mvprintw(center_y + 1, level_start_x + i * 9 , "%s", choices[i]);
-                    attroff(A_REVERSE);
-                } else {
-                    mvprintw(center_y + 1, level_start_x + i * 9 , "%s", choices[i]);
-                }
-            }
-
-
-            int color_start_x = center_x ;
-            for (int i = 0; i < n_choices+1; i++) {
-                if (current_menu == 1 && i == color_choice) {
-                    attron(A_REVERSE);
-                    mvprintw(center_y + 11, color_start_x + i * 9 - 5, "%s", colors[i]);
-                    attroff(A_REVERSE);
-                } else {
-                    mvprintw(center_y + 11, color_start_x + i * 9 - 5, "%s", colors[i]);
-                }
-            }
-
-            attron(A_BOLD);
+        }
+        if(current_menu==2){
             attron(A_STANDOUT);
-            mvprintw(center_y + 20, center_x - 4 , "[ Press Enter to start the game ]");
+            mvprintw(center_y + 14, center_x + 4, " Choose music ");
             attroff(A_STANDOUT);
-            mvprintw(center_y + 24 , center_x - 14 , "use -> and <- to move between options and then press enter");
-
-            attroff(A_BOLD);
-
-            refresh();
-
-            ch = getch();
-            switch (ch) {
-                case KEY_RIGHT:
-                    if (current_menu == 0 && current_choice < n_choices - 1)
-                        current_choice++;
-                    else if (current_menu == 1 && color_choice < n_choices)
-                        color_choice++;
-                    break;
-                case KEY_LEFT:
-                    if (current_menu == 0 && current_choice > 0)
-                        current_choice--;
-                    else if (current_menu == 1 && color_choice > 0)
-                        color_choice--;
-                    break;
-                case KEY_ENTER:
-                case '\n':
-                    if (current_menu == 0) {
-                        current_user->game_setting.game_level = current_choice;
-                        current_menu = 1;
-                    } else if (current_menu == 1) {
-                        current_user->game_setting.player_color = color_choice;
-                        current_menu = 2;
-                    } else if (current_menu == 2) {
-                        endwin();
-                        return 0;
-                    }
-                    break;
-            }
         }
 
-        endwin();
-        return 0;
+
+
+        mvprintw(center_y + 1, center_x, "%s", level_choice == 0 ? "> EASY " : "  EASY ");
+        mvprintw(center_y + 1, center_x + 9, "%s", level_choice == 1 ? "> MEDIUM " : "  MEDIUM ");
+        mvprintw(center_y + 1, center_x + 18, "%s", level_choice == 2 ? "> HARD " : "  HARD ");
+
+        mvprintw(center_y + 9, center_x - 7, "%s", color_choice == 0 ? "> WHITE" : "  WHITE ");
+        mvprintw(center_y + 9, center_x + 2, "%s", color_choice == 1 ? "> CYAN" : "  CYAN ");
+        mvprintw(center_y + 9, center_x + 11, "%s", color_choice == 2 ? "> GREEN" : "  GREEN ");
+        mvprintw(center_y + 9, center_x + 20, "%s", color_choice == 3 ? "> SPECIAL" : "  SPECIAL ");
+
+        mvprintw(center_y + 17, center_x + 2 , "%s", music_choice == 0 ? "> SOUND 1" : "  SOUND 1 ");
+        mvprintw(center_y + 17, center_x + 14, "%s", music_choice == 1 ? "> SOUND 2" : "  SOUND 2 ");
+
+        attron(A_BOLD);
+        mvprintw(center_y + 22, center_x - 2, "[ Press Enter to continue ]");
+        mvprintw(center_y + 25, center_x - 8, "Use <- -> to select and Enter to confirm");
+        attroff(A_BOLD);
+
+        refresh();
+
+        // Handle input
+        int ch = getch();
+        switch (ch) {
+            case KEY_LEFT:
+                switch (current_menu) {
+                    case 0: if (level_choice > 0) level_choice--; break;
+                    case 1: if (color_choice > 0) color_choice--; break;
+                    case 2: if (music_choice > 0) music_choice--; break;
+                }
+                break;
+
+            case KEY_RIGHT:
+                switch (current_menu) {
+                    case 0: if (level_choice < 2) level_choice++; break;
+                    case 1: if (color_choice < 3) color_choice++; break;
+                    case 2: if (music_choice < 1) music_choice++; break;
+                }
+                break;
+
+            case '\n':
+            case KEY_ENTER:
+                switch (current_menu) {
+                    case 0:
+                        current_user->game_setting.game_level = level_choice;
+                        current_menu = 1;
+                        break;
+                    case 1:
+                        current_user->game_setting.player_color = color_choice;
+                        current_menu = 2;
+                        break;
+                    case 2:
+                        current_user->game_setting.music = music_choice;
+                        endwin();
+                        return 0;
+                }
+                break;
+        }
     }
+
+}
 
 int help(){
 
@@ -863,10 +911,11 @@ int help(){
     clear();
     int max_y, max_x;
     getmaxyx(stdscr, max_y, max_x);
-    int center_y = max_y / 2 - 20;
+    int center_y = max_y / 2 - 24;
     int center_x = max_x / 2 - 40;
     int temp_x;
     int temo_y;
+
     mvprintw(center_y++, center_x, " _                   ");
     mvprintw(center_y++, center_x, "| | | | ___| |_ __   ");
     mvprintw(center_y++, center_x, "| |_| |/ _ \\ | '_ \\ ");
@@ -876,36 +925,50 @@ int help(){
     center_y++;
     mvprintw(center_y++, center_x, ">>> Please read carefully! <<<");
     center_y+=3;
-    temo_y=center_y; temp_x=center_x;
+    temo_y=center_y;
+    temp_x=center_x;
+
     mvprintw(center_y++, center_x, "< player movement >");
     center_y++;
-    mvprintw(center_y++, center_x, "┌───┐");
-    mvprintw(center_y++, center_x, "│ ↑ │");
-    mvprintw(center_y++, center_x, "├───┼───┬───┐");
-    mvprintw(center_y++, center_x, "│ ← │ ↓ │ → │");
-    mvprintw(center_y++, center_x, "└───┴───┴───┘");
+    mvprintw(center_y++, center_x, "┌───┬───┬───┬───┐");
+    mvprintw(center_y++, center_x, "│ Y │ U │ . │ . │");
+    mvprintw(center_y++, center_x, "├───┼───┼───┼───┤");
+    mvprintw(center_y++, center_x, "│ H │ J │ K │ L │");
+    mvprintw(center_y++, center_x, "├───┼───┼───┼───┤");
+    mvprintw(center_y++, center_x, "│ N │ M │ , │ . │");
+    mvprintw(center_y++, center_x, "└───┴───┴───┴───┘");
     center_y++;
-    mvprintw(center_y++, center_x, "Right arrow →  to go right");
-    mvprintw(center_y++, center_x, "Left arrow  ←  to go left");
-    mvprintw(center_y++, center_x, "Up arrow    ↑  to go up");
-    mvprintw(center_y++, center_x, "Down arrow  ↓  to go down");
+
+    mvprintw(center_y++, center_x, "[j] to go up");
+    mvprintw(center_y++, center_x, "[k] to go down");
+    mvprintw(center_y++, center_x, "[l] to go left");
+    mvprintw(center_y++, center_x, "[h] to go right");
+    mvprintw(center_y++, center_x, "[y] to go up-left");
+    mvprintw(center_y++, center_x, "[u] to go up-right");
+    mvprintw(center_y++, center_x, "[b] to go down-left");
+    mvprintw(center_y++, center_x, "[n] to go down-right");
+
     center_y+=3;
     mvprintw(center_y++, center_x, "< Weapons >");
     center_y++;
     mvprintw(center_y++, center_x, "[i] to weapons menu");
     center_y++;
-    mvprintw(center_y++, center_x, "[p] to attack with short range weapons");
+    mvprintw(center_y++, center_x, "[s] to attack with short range weapons");
     center_y++;
     mvprintw(center_y++, center_x, "Long range weapons");
-    mvprintw(center_y++, center_x, "[p] + [w] -> shoot upward");
-    mvprintw(center_y++, center_x, "    + [a] -> shoot leftward");
-    mvprintw(center_y++, center_x, "    + [s] -> shoot downward");
-    mvprintw(center_y++, center_x, "    + [d] -> shoot rightward");
-    center_y++;
+    mvprintw(center_y++, center_x, "[s] + [w] -> shoot ↑");
+    mvprintw(center_y++, center_x, "    + [a] -> shoot ←");
+    mvprintw(center_y++, center_x, "    + [x] -> shoot ↓");
+    mvprintw(center_y++, center_x, "    + [d] -> shoot →");
+    mvprintw(center_y++, center_x, "    + [q] -> shoot ↖");
+    mvprintw(center_y++, center_x, "    + [e] -> shoot ↗");
+    mvprintw(center_y++, center_x, "    + [z] -> shoot ↙");
+    mvprintw(center_y++, center_x, "    + [c] -> shoot ↘");
+
     temp_x += 40;
     mvprintw(temo_y++, temp_x, "< Food >");
     temo_y++;
-    mvprintw(temo_y++, temp_x, "[e] to open the food menu");
+    mvprintw(temo_y++, temp_x, "[r] to open the food menu");
     temo_y+=3;
     mvprintw(temo_y++, temp_x, "< Potions >");
     temo_y++;
@@ -914,15 +977,15 @@ int help(){
     center_y+=20;
     mvprintw(temo_y++, temp_x, "< help >");
     temo_y++;
-    mvprintw(temo_y++, temp_x, "[h] access to help menu");
+    mvprintw(temo_y++, temp_x, "[p] access to help menu");
     mvprintw(center_y, center_x, "Press any key to start the game.");
-
 
     refresh();
     getch();
     getch();
     clear();
     endwin();
+
 
 }
 
@@ -1309,6 +1372,14 @@ int potion(struct user *current_user){
 
 int game_f1(struct user *current_user, int level) {
     mvprintw(2,1,"  ");
+    if(current_user->game_setting.music==0){
+        play_background_music("music.wav");
+    }
+    else if(current_user->game_setting.music==1){
+        play_background_music("music2.wav");
+    }
+
+
 
     init_color(30, 333, 333, 333);
     init_pair(40, 30, COLOR_BLACK);
@@ -1683,7 +1754,7 @@ int game_f1(struct user *current_user, int level) {
     }
 
     //weapon
-    int weapon_num = 2 + rand() % 3;
+    int weapon_num = 2 + rand()%2;
     int x3=0,y3=0;
     int weaponi =0 ;
     while(!weaponi){
@@ -1715,7 +1786,7 @@ int game_f1(struct user *current_user, int level) {
         }
     }
 
-    weapon_num= 2 + rand() % 4;
+    weapon_num= 2 % rand()%3 ;
     x3=0,y3=0;
     weaponi =0 ;
     while(!weaponi){
@@ -1838,7 +1909,8 @@ int game_f1(struct user *current_user, int level) {
     while(1){
         int y5=rand()%max_y;
         int x5=rand()%max_x;
-        if(map[y5][x5]=='.' && room_number[y5][x5]==locked_room_num){
+        if(map[y5][x5]=='.' && room_number[y5][x5]==locked_room_num && locked[y5+1][x5]==0 &&
+            locked[y5][x5+1]==0 && locked[y5-1][x5]==0 && locked[y5][x5-1]==0){
             map[y5][x5]='=';
             break;
         }
@@ -2006,9 +2078,9 @@ int game_f1(struct user *current_user, int level) {
     current_user->weapons.Normal_Arrow_count=0;
     current_user->weapons.Magic_Wand_count=0;
     current_user->weapons.Dagger_count=0;
-    int start_normal_arrow=0;  int xfor4, yfor4, counterfor4;int nw=0,na=0,ns=0,nd=0;
-    int start_magic_wand=0;  int xfor3, yfor3, counterfor3;int mw=0,ma=0,ms=0,md=0;
-    int start_dagger=0;  int xfor2, yfor2, counterfor2; int dw=0,da=0,ds=0,dd=0;
+    int start_normal_arrow=0;  int xfor4, yfor4, counterfor4;int nw=0,na=0,nx=0,nd=0 ,nq=0,ne=0,nz=0,nc=0;
+    int start_magic_wand=0;  int xfor3, yfor3, counterfor3;int mw=0,ma=0,mx=0,md=0 ,mq=0,me=0,mz=0,mc=0;
+    int start_dagger=0;  int xfor2, yfor2, counterfor2; int dw=0,da=0,dx1=0,dd=0 ,dq=0,de=0,dz=0,dc=0;
     int is_sth_here[max_y][max_x];
     for(int j=0;j<max_y;j++){
         for(int i=0;i<max_x;i++){
@@ -2018,10 +2090,13 @@ int game_f1(struct user *current_user, int level) {
     int food4health_counter=0;
     int k=1;
 
+    int health_spell_working=0;
+
 
 
     do {
         //print map
+        check_and_replay_music();
         for(int i = 0; i < max_y; i++) {
             for(int j = 0; j < max_x; j++) {
                 if(map[i][j] != ' ' && visited[i][j]==1) {
@@ -2164,7 +2239,7 @@ int game_f1(struct user *current_user, int level) {
         int new_y = y;
         int new_x = x;
 
-        if(c=='h'){
+        if(c=='p'){
             help();
         }
 
@@ -2173,33 +2248,65 @@ int game_f1(struct user *current_user, int level) {
             in_use_weapon= weapon(current_user,in_use_weapon);
         }
 
-        if(c ==101) { ///food window
+        if(c =='r') { ///food window
             clear();
             int p= food_bar(&food1, &health, &food);
             if(p==3){
                 continue;
             }
         }
-//        if (c == 'j' || c =='J' && y > 0) new_y--;
-//        if (c == 'k' || c == 'K' && y < max_y - 1) new_y++;
-//        if (c == 'l' || c == 'L' && x < max_x - 1) new_x++;
-//        if (c == 'h' || c == 'H' && x > 0) new_x--;
 
-        if(current_user->spells.speed_spell_counter>0){
-            if (c == KEY_UP && y > 0) new_y-=2;
-            if (c == KEY_DOWN && y < max_y - 1) new_y+=2;
-            if (c == KEY_RIGHT && x < max_x - 1) new_x+=2;
-            if (c == KEY_LEFT && x > 0) new_x-=2;
-            current_user->spells.speed_spell_counter-=1;
-            if(current_user->spells.speed_spell_counter==0) current_user->spells.speed_spell_counter=0;
-        }
-        else{
-            if (c == KEY_UP && y > 0) new_y--;
-            if (c == KEY_DOWN && y < max_y - 1) new_y++;
-            if (c == KEY_RIGHT && x < max_x - 1) new_x++;
-            if (c == KEY_LEFT && x > 0) new_x--;
+        if(current_user->spells.speed_spell_counter > 0) {
+            if (c == 'k' && y < max_y - 1) new_y += 2;  // Down
+            if (c == 'j' && y > 0) new_y -= 2;          // Up
+            if (c == 'l' && x < max_x - 1) new_x += 2;  // Right
+            if (c == 'h' && x > 0) new_x -= 2;          // Left
 
+            if (c == 'y' && y > 0 && x > 0) {               // Up-Left
+                new_y -= 2;
+                new_x -= 2;
+            }
+            if (c == 'u' && y > 0 && x < max_x - 1) {       // Up-Right
+                new_y -= 2;
+                new_x += 2;
+            }
+            if (c == 'b' && y < max_y - 1 && x > 0) {       // Down-Left
+                new_y += 2;
+                new_x -= 2;
+            }
+            if (c == 'n' && y < max_y - 1 && x < max_x - 1) { // Down-Right
+                new_y += 2;
+                new_x += 2;
+            }
+
+            current_user->spells.speed_spell_counter -= 1;
+            if(current_user->spells.speed_spell_counter == 0)
+                current_user->spells.speed_spell_counter = 0;
         }
+        else {
+            if (c == 'k' && y < max_y - 1) new_y++;
+            if (c == 'j' && y > 0) new_y--;
+            if (c == 'l' && x < max_x - 1) new_x++;
+            if (c == 'h' && x > 0) new_x--;
+
+            if (c == 'y' && y > 0 && x > 0) {
+                new_y--;
+                new_x--;
+            }
+            if (c == 'u' && y > 0 && x < max_x - 1) {
+                new_y--;
+                new_x++;
+            }
+            if (c == 'b' && y < max_y - 1 && x > 0) {
+                new_y++;
+                new_x--;
+            }
+            if (c == 'n' && y < max_y - 1 && x < max_x - 1) {
+                new_y++;
+                new_x++;
+            }
+        }
+
 
         if(current_user->spells.damage_spell_counter>0){
             k=2;
@@ -2208,7 +2315,7 @@ int game_f1(struct user *current_user, int level) {
         } else {
             k=1;
         }
-        mvprintw(2,max_x-30,"[h] to open help menu");
+        mvprintw(2,max_x-30,"[p] to open help menu");
 
 
 
@@ -2475,13 +2582,13 @@ int game_f1(struct user *current_user, int level) {
             }
         }
         else if(current_user->game_setting.game_level==1){
-            if(counter==25){
+            if(counter==28){
                 health--;
                 counter=0;
             }
         }
         else if(current_user->game_setting.game_level==2){
-            if(counter==15){
+            if(counter==18){
                 health--;
                 counter=0;
             }
@@ -2508,6 +2615,7 @@ int game_f1(struct user *current_user, int level) {
         if(health==0){
             current_user->new_golds+=total_black_gold+total_yellow_gold;
             current_user->total_gold+=current_user->new_golds;
+            stop_background_music();
             return 0;
         }
 
@@ -2525,7 +2633,7 @@ int game_f1(struct user *current_user, int level) {
         int sx = new_x_s -  new_x;
         int sy = new_y_s - new_y;
 
-        if(c=='p' || c=='P') {
+        if(c=='s' || c=='S') {
             if (in_use_weapon == 1) {
                 if ((abs(dy) == 1 || abs(dy) == -1 || abs(dy) == 0) &&
                     (abs(dx) == 1 || abs(dx) == -1 || abs(dx) == 0)) {
@@ -2590,20 +2698,29 @@ int game_f1(struct user *current_user, int level) {
         }
 
         ///////////dagger
-        if(in_use_weapon == 2 && previous_c == 'p') {
+
+        if(in_use_weapon == 2 && previous_c == 's') {
             start_dagger = 1;
             xfor2 = new_x;
             yfor2 = new_y;
             counterfor2 = 1;
             switch (c) {
-                case 'a':
-                    da++; break;
-                case 'w':
+                case 'w':  // Up
                     dw++; break;
-                case 's':
-                    ds++; break;
-                case 'd':
+                case 'x':  // Down
+                    dx1++; break;
+                case 'a':  // Left
+                    da++; break;
+                case 'd':  // Right
                     dd++; break;
+                case 'q':  // Up-Left
+                    dq++; break;
+                case 'e':  // Up-Right
+                    de++; break;
+                case 'z':  // Down-Left
+                    dz++; break;
+                case 'c':  // Down-Right
+                    dc++; break;
             }
 
             current_user->weapons.Dagger_count--;
@@ -2618,97 +2735,132 @@ int game_f1(struct user *current_user, int level) {
                 fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
-                counterfor2=0;
-                start_dagger=0;
+                counterfor2 = 0;
+                start_dagger = 0;
             }
             if(xfor2 == new_x_s && yfor2 == new_y_s) {
                 snake_health -= 10*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
-                counterfor2=0;
-                start_dagger=0;
+                counterfor2 = 0;
+                start_dagger = 0;
             }
             if(xfor2 == xd && yfor2 == yd) {
                 deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
                 mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
-                counterfor2=0;
-                start_dagger=0;
-            }
-
-            if(da==1) {
-                xfor2--;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='-'){
-                    counterfor2=0;
-                    if(map[yfor2][xfor2+1]=='.')
-                    {
-                        map[yfor2][xfor2+1]='z';
-                    }
-                }
-            }
-            else if(ds==1) {
-                yfor2++;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
-                    counterfor2=0;
-                    if(map[yfor2-1][xfor2]=='.')
-                    {
-                        map[yfor2-1][xfor2]='z';
-                    }
-                }
-            }
-            else if(dd==1) {
-                xfor2++;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
-                    counterfor2=0;
-                    if(map[yfor2][xfor2-1]=='.')
-                    {
-                        map[yfor2][xfor2-1]='z';
-                    }
-                }
-            }
-            else if(dw==1) {
-                yfor2--;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
-                    counterfor2=0;
-                    if(map[yfor2+1][xfor2]=='.')
-                    {
-                        map[yfor2+1][xfor2]='z';
-                    }
-                }
-            }
-
-            counterfor2++;
-            if(counterfor2 >= 5) {
-                if(map[yfor2][xfor2]=='.'){
-                    map[yfor2][xfor2]='z'; // z represents 1 dagger
-                }
-                start_dagger = 0;
                 counterfor2 = 0;
-                dd=0; da=0; dw=0; ds=0;
+                start_dagger = 0;
             }
-            if(map[yfor2][xfor2]=='.'){
-                mvaddch(yfor2, xfor2, '*');
+
+            if(da == 1) {
+                xfor2--;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2][xfor2+1] == '.') map[yfor2][xfor2+1] = 'z';
+                }
+            }
+            else if(dd == 1) {
+                xfor2++;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_') {
+                    counterfor2 = 0;
+                    if(map[yfor2][xfor2-1] == '.') map[yfor2][xfor2-1] = 'z';
+                }
+            }
+            else if(dw == 1) {
+                yfor2--;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_') {
+                    counterfor2 = 0;
+                    if(map[yfor2+1][xfor2] == '.') map[yfor2+1][xfor2] = 'z';
+                }
+            }
+            else if(dx1 == 1) {
+                yfor2++;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_') {
+                    counterfor2 = 0;
+                    if(map[yfor2-1][xfor2] == '.') map[yfor2-1][xfor2] = 'z';
+                }
+
+            }
+            else if(dq == 1) {
+                xfor2--;
+                yfor2--;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2+1][xfor2+1] == '.') map[yfor2+1][xfor2+1] = 'z';
+                }
+            }
+            else if(de == 1) {
+                xfor2++;
+                yfor2--;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2+1][xfor2-1] == '.') map[yfor2+1][xfor2-1] = 'z';
+                }
+            }
+            else if(dz == 1) {
+                xfor2--;
+                yfor2++;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2-1][xfor2+1] == '.') map[yfor2-1][xfor2+1] = 'z';
+                }
+            }
+            else if(dc == 1) {
+                xfor2++;
+                yfor2++;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2-1][xfor2-1] == '.') map[yfor2-1][xfor2-1] = 'z';
+                }
+            }
+
+            if(start_dagger!=0){
+                counterfor2++;
+                if(counterfor2 >= 5) {
+                    if(map[yfor2][xfor2] == '.') {
+                        map[yfor2][xfor2] = 'z';  // z represents 1 dagger
+                    }
+                    start_dagger = 0;
+                    counterfor2 = 0;
+                    dd = 0; da = 0; dw = 0; dx1 = 0;
+                    dq = 0; de = 0; dz = 0; dc = 0;
+                }
+
+                if(map[yfor2][xfor2] == '.') {
+                    mvaddch(yfor2, xfor2, '*');
+                }
+
             }
             refresh();
         }
+
         ////////////
 
 
         ///////////normal arrow
-        if(in_use_weapon == 4 && previous_c == 'p') {
+        if(in_use_weapon == 4 && previous_c == 's') {
             start_normal_arrow = 1;
             xfor4 = new_x;
             yfor4 = new_y;
             counterfor4 = 1;
             switch (c) {
-                case 'a':
+                case 'a':  // Left
                     na++; break;
-                case 'w':
+                case 'w':  // Up
                     nw++; break;
-                case 's':
-                    ns++; break;
-                case 'd':
+                case 'x':  // Down
+                    nx++; break;
+                case 'd':  // Right
                     nd++; break;
+                case 'q':  // Up-Left
+                    nq++; break;
+                case 'e':  // Up-Right
+                    ne++; break;
+                case 'z':  // Down-Left
+                    nz++; break;
+                case 'c':  // Down-Right
+                    nc++; break;
             }
 
             current_user->weapons.Normal_Arrow_count--;
@@ -2723,84 +2875,103 @@ int game_f1(struct user *current_user, int level) {
                 fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
-                counterfor4=0;
-                start_normal_arrow=0;
+                counterfor4 = 0;
+                start_normal_arrow = 0;
             }
-            if(xfor4 == new_x_s && yfor2 == new_y_s) {
+            if(xfor4 == new_x_s && yfor4 == new_y_s) {
                 snake_health -= 10*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
-                counterfor4=0;
-                start_normal_arrow=0;
+                counterfor4 = 0;
+                start_normal_arrow = 0;
             }
-            if(xfor4 == xd && yfor4== yd) {
+            if(xfor4 == xd && yfor4 == yd) {
                 deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
-                mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
-                counterfor4=0;
-                start_normal_arrow=0;
-            }
-
-            if(na==1) {
-                xfor4--;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
-                    counterfor4=0;
-                    if(map[yfor4][xfor4+1]=='.')
-                    {
-                        map[yfor4][xfor4+1]='c';
-                    }
-                }
-            }
-            else if(ns==1) {
-                yfor4++;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
-                    counterfor4=0;
-                    if(map[yfor4-1][xfor4]=='.')
-                    {
-                        map[yfor4-1][xfor4]='c';
-                    }
-                }
-            }
-            else if(nd==1) {
-                xfor4++;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
-                    counterfor4=0;
-                    if(map[yfor4][xfor4-1]=='.')
-                    {
-                        map[yfor4][xfor4-1]='c';
-                    }
-                }
-            }
-            else if(nw==1) {
-                yfor4--;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
-                    counterfor4=0;
-                    if(map[yfor4+1][xfor4]=='.')
-                    {
-                        map[yfor4+1][xfor4]='c';
-                    }
-                }
-            }
-
-            counterfor4++;
-            if(counterfor4 >= 5) {
-                if(map[yfor4][xfor4]=='.'){
-                    map[yfor4][xfor4]='c'; // c represents 1 normal arrow
-                }
-                start_normal_arrow = 0;
+                mvprintw(3, 3, "You hit Demon!  health: %d/5                           ", deamon_health);
                 counterfor4 = 0;
-                nd=0; na=0; nw=0; ns=0;
+                start_normal_arrow = 0;
             }
-            if(map[yfor4][xfor4]=='.'){
-                mvaddch(yfor4, xfor4, '-');
+
+            if(na == 1) {
+                xfor4--;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4][xfor4+1] == '.') map[yfor4][xfor4+1] = 'c';
+                }
+            }
+            else if(nx == 1) {
+                yfor4++;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4-1][xfor4] == '.') map[yfor4-1][xfor4] = 'c';
+                }
+            }
+            else if(nd == 1) {
+                xfor4++;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4][xfor4-1] == '.') map[yfor4][xfor4-1] = 'c';
+                }
+            }
+            else if(nw == 1) {
+                yfor4--;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4+1][xfor4] == '.') map[yfor4+1][xfor4] = 'c';
+                }
+            }
+            else if(nq == 1) {
+                yfor4--; xfor4--;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4+1][xfor4+1] == '.') map[yfor4+1][xfor4+1] = 'c';
+                }
+            }
+            else if(ne == 1) {
+                yfor4--; xfor4++;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4+1][xfor4-1] == '.') map[yfor4+1][xfor4-1] = 'c';
+                }
+            }
+            else if(nz == 1) {
+                yfor4++; xfor4--;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4-1][xfor4+1] == '.') map[yfor4-1][xfor4+1] = 'c';
+                }
+            }
+            else if(nc == 1) {
+                yfor4++; xfor4++;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4-1][xfor4-1] == '.') map[yfor4-1][xfor4-1] = 'c';
+                }
+            }
+
+            if(start_normal_arrow != 0) {
+                counterfor4++;
+                if(counterfor4 >= 5) {
+                    if(map[yfor4][xfor4] == '.') {
+                        map[yfor4][xfor4] = 'c';  // c represents 1 normal arrow
+                    }
+                    start_normal_arrow = 0;
+                    counterfor4 = 0;
+                    nd = 0; na = 0; nw = 0; nx = 0;
+                    nq = 0; ne = 0; nz = 0; nc = 0;
+                }
+                if(map[yfor4][xfor4] == '.') {
+
+                    mvaddch(yfor4, xfor4, '-');
+                }
             }
 
             refresh();
         }
         ////////////
 
-        ///////////Magic wand
-        if(in_use_weapon == 3 && previous_c == 'p') {
+        if(in_use_weapon == 3 && previous_c == 's') {
             start_magic_wand = 1;
             xfor3 = new_x;
             yfor3 = new_y;
@@ -2810,10 +2981,18 @@ int game_f1(struct user *current_user, int level) {
                     ma++; break;
                 case 'w':
                     mw++; break;
-                case 's':
-                    ms++; break;
+                case 'x':
+                    mx++; break;
                 case 'd':
                     md++; break;
+                case 'q':
+                    mq++; break;
+                case 'e':
+                    me++; break;
+                case 'z':
+                    mz++; break;
+                case 'c':
+                    mc++; break;
             }
 
             current_user->weapons.Magic_Wand_count--;
@@ -2828,81 +3007,106 @@ int game_f1(struct user *current_user, int level) {
                 fire_health -= 15*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
-                counterfor3=0;
-                start_magic_wand=0;
+                counterfor3 = 0;
+                start_magic_wand = 0;
             }
             if(xfor3 == new_x_s && yfor3 == new_y_s) {
                 snake_health -= 15*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
-                counterfor3=0;
-                snake_chase=0;
-                start_magic_wand=0;
+                counterfor3 = 0;
+                snake_chase = 0;
+                start_magic_wand = 0;
             }
             if(xfor3 == xd && yfor3 == yd) {
                 deamon_health -= 15*k;
                 if(deamon_health <= 0) deamon_health = 0;
                 mvprintw(3, 3, "You hit Deamon!  health: %d/5                                  ", deamon_health);
-                counterfor3=0;
-                start_magic_wand=0;
-            }
-
-            if(ma==1) {
-                xfor3--;
-                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='-'){
-                    counterfor3=0;
-                    if(map[yfor3][xfor3+1]=='.')
-                    {
-                        map[yfor3][xfor3+1]='x';
-                    }
-                }
-            }
-            else if(ms==1) {
-                yfor3++;
-                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='-'){
-                    counterfor3=0;
-                    if(map[yfor3-1][xfor3+1]=='.')
-                    {
-                        map[yfor3-1][xfor3+1]='x';
-                    }
-                }
-            }
-            else if(md==1) {
-                xfor3++;
-                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='-'){
-                    counterfor3=0;
-                    if(map[yfor3][xfor3-1]=='.')
-                    {
-                        map[yfor3][xfor3-1]='x';
-                    }
-                }
-            }
-            else if(mw==1) {
-                yfor3--;
-                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='-'){
-                    counterfor3=0;
-                    if(map[yfor3+1][xfor3]=='.')
-                    {
-                        map[yfor3+1][xfor3]='x';
-                    }
-                }
-            }
-
-            counterfor3++;
-            if(counterfor3 >= 5) {
-                if(map[yfor3][xfor3]=='.'){
-                    map[yfor3][xfor3]='x'; // x represents 1 magic wand
-                }
-                start_magic_wand = 0;
                 counterfor3 = 0;
-                md=0; ma=0; mw=0; ms=0;
+                start_magic_wand = 0;
             }
-            if(map[yfor3][xfor3]=='.'){
-                mvaddch(yfor3, xfor3, '+');
+            if(ma == 1) {
+                xfor3--;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3][xfor3+1] == '.') map[yfor3][xfor3+1] = 'x';
+                }
             }
+            else if(mx == 1) {
+                yfor3++;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3-1][xfor3] == '.') map[yfor3-1][xfor3] = 'x';
+                }
+            }
+            else if(md == 1) {
+                xfor3++;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3][xfor3-1] == '.') map[yfor3][xfor3-1] = 'x';
+                }
+            }
+            else if(mw == 1) {
+                yfor3--;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3+1][xfor3] == '.') map[yfor3+1][xfor3] = 'x';
+                }
+            }
+
+            else if(mq == 1) {
+                yfor3--; xfor3--;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3+1][xfor3+1] == '.') map[yfor3+1][xfor3+1] = 'x';
+                }
+            }
+            else if(me == 1) {
+                yfor3--; xfor3++;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3+1][xfor3-1] == '.') map[yfor3+1][xfor3-1] = 'x';
+                }
+            }
+            else if(mz == 1) {
+                yfor3++; xfor3--;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3-1][xfor3+1] == '.') map[yfor3-1][xfor3+1] = 'x';
+                }
+            }
+            else if(mc == 1) {
+                yfor3++; xfor3++;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3-1][xfor3-1] == '.') map[yfor3-1][xfor3-1] = 'x';
+                }
+            }
+
+            if(start_magic_wand != 0) {
+                counterfor3++;
+                if(counterfor3 >= 5) {
+                    if(map[yfor3][xfor3] == '.') {
+                        map[yfor3][xfor3] = 'x';
+                    }
+                    start_magic_wand = 0;
+                    counterfor3 = 0;
+                    md = 0; ma = 0; mw = 0; mx = 0;
+                    mq = 0; me = 0; mz = 0; mc = 0;
+                }
+                if(map[yfor3][xfor3] == '.') {
+                    char magic_char = '+';
+                    if((mq == 1 || mc == 1) || (me == 1 || mz == 1)) {
+                        magic_char = '*';
+                    }
+                    mvaddch(yfor3, xfor3, magic_char);
+                }
+            }
+
             mvprintw(2, 3, "                                                            ");
             refresh();
         }
+
         ////////////
 
 
@@ -2918,10 +3122,11 @@ int game_f1(struct user *current_user, int level) {
                     attroff(COLOR_PAIR(14));
                 }
                 else {
-                    mvprintw(3,3,"The door is locked. Press L to enter the pass !");
+                    mvprintw(3,3,"The door is locked. Press [t] to enter the pass !");
                 }
-                if(c=='l' || c == 'L' && password_counter<=3){
+                if(c=='t' || c == 'T' && password_counter<=3){
                     status=code(password);
+                    curs_set(0);
                     password_counter++;
                 }
                 if(status==1 && password_counter<=3 ){
@@ -2962,18 +3167,19 @@ int game_f1(struct user *current_user, int level) {
         }
 
         if(food>=10){
-            if(food4health_counter>=4){
-                if(current_user->spells.health_spell_counter>0){
+            if(current_user->spells.health_spell_counter>0){
+                current_user->spells.health_spell_counter-=1;
+                if(current_user->spells.health_spell_counter<0) current_user->spells.health_spell_counter=0;
+                if(food4health_counter>=4){
                     health+=2;
-                    current_user->spells.health_spell_counter-=1;
-                    if(current_user->spells.health_spell_counter<0) current_user->spells.health_spell_counter=0;
+                    food4health_counter=0;
                 }
-                else{
-                    health+=1;
-                }
-                if(health>10) health=10;
+            }
+            else if(current_user->spells.health_spell_counter==0 && food4health_counter>=4){
+                health+=1;
                 food4health_counter=0;
             }
+            if(health>10) health=10;
         }
 
         food4health_counter++;
@@ -3063,7 +3269,25 @@ int game_f1(struct user *current_user, int level) {
             return game_f2(current_user,current_user->game_setting.game_level);
         }
 
-        if(c=='m'){
+        if(c=='2'){
+            current_user->food=food;
+            current_user->health=health;
+            current_user->food1=food1;
+            current_user->new_golds=total_black_gold+total_yellow_gold;
+            current_user->weapons.in_use_weapon=in_use_weapon;
+            return game_f2(current_user,current_user->game_setting.game_level);
+
+        }
+        if(c=='3'){
+            current_user->food=food;
+            current_user->health=health;
+            current_user->food1=food1;
+            current_user->new_golds=total_black_gold+total_yellow_gold;
+            current_user->weapons.in_use_weapon=in_use_weapon;
+            return game_f3(current_user,current_user->game_setting.game_level);
+
+        }
+        if(c=='4'){
             current_user->food=food;
             current_user->health=health;
             current_user->food1=food1;
@@ -3072,6 +3296,17 @@ int game_f1(struct user *current_user, int level) {
             return game_f4(current_user,current_user->game_setting.game_level);
 
         }
+        if(c=='5'){
+            current_user->food=food;
+            current_user->health=health;
+            current_user->food1=food1;
+            current_user->new_golds=total_black_gold+total_yellow_gold;
+            current_user->weapons.in_use_weapon=in_use_weapon;
+            return treasure_room(current_user,current_user->game_setting.game_level);
+
+        }
+
+
 
         previous_x = new_x;
         previous_y = new_y;
@@ -3529,7 +3764,8 @@ int game_f2(struct user *current_user , int level) {
     while(1){
         int y5=rand()%max_y;
         int x5=rand()%max_x;
-        if(map[y5][x5]=='.' && room_number[y5][x5]==locked_room_num){
+        if(map[y5][x5]=='.' && room_number[y5][x5]==locked_room_num && locked[y5+1][x5]==0 &&
+           locked[y5][x5+1]==0 && locked[y5-1][x5]==0 && locked[y5][x5-1]==0){
             map[y5][x5]='=';
             break;
         }
@@ -3571,10 +3807,11 @@ int game_f2(struct user *current_user , int level) {
 
     ///second
 
-    int xf2=0, yf2=0;
-    int countf2=0;
+    int xf2,yf2;
+    int countf2;
 
     if(current_user->game_setting.game_level==2) {
+        countf2=0;
         while (countf2 == 0) {
             xf2 = rand() % max_x;
             yf2 = rand() % max_y;
@@ -3712,9 +3949,9 @@ int game_f2(struct user *current_user , int level) {
         snake_chase=1;
     }
     char previous_c;
-    int start_normal_arrow=0;  int xfor4, yfor4, counterfor4;int nw=0,na=0,ns=0,nd=0;
-    int start_magic_wand=0;  int xfor3, yfor3, counterfor3;int mw=0,ma=0,ms=0,md=0;
-    int start_dagger=0;  int xfor2, yfor2, counterfor2; int dw=0,da=0,ds=0,dd=0;
+    int start_normal_arrow=0;  int xfor4, yfor4, counterfor4;int nw=0,na=0,nx=0,nd=0 ,nq=0,ne=0,nz=0,nc=0;
+    int start_magic_wand=0;  int xfor3, yfor3, counterfor3;int mw=0,ma=0,mx=0,md=0 ,mq=0,me=0,mz=0,mc=0;
+    int start_dagger=0;  int xfor2, yfor2, counterfor2; int dw=0,da=0,dx1=0,dd=0 ,dq=0,de=0,dz=0,dc=0;
     int is_sth_here[max_y][max_x];
     for(int j=0;j<max_y;j++){
         for(int i=0;i<max_x;i++){
@@ -3727,6 +3964,7 @@ int game_f2(struct user *current_user , int level) {
 
 
     do {
+        check_and_replay_music();
         //print map
         for(int i = 0; i < max_y; i++) {
             for(int j = 0; j < max_x; j++) {
@@ -3873,7 +4111,7 @@ int game_f2(struct user *current_user , int level) {
         int new_y = y;
         int new_x = x;
 
-        if(c=='h'){
+        if(c=='p'){
             help();
         }
 
@@ -3883,7 +4121,7 @@ int game_f2(struct user *current_user , int level) {
 
         }
 
-        if(c ==101) { ///food window
+        if(c =='r') { ///food window
             clear();
             int p= food_bar(&food1, &health, &food);
             if(p==3){
@@ -3893,22 +4131,57 @@ int game_f2(struct user *current_user , int level) {
         }
 
         ///movement
-        mvprintw(2,max_x-30,"[h] to open help menu");
+        mvprintw(2,max_x-30,"[p] to open help menu");
 
-        if(current_user->spells.speed_spell_counter>0){
-            if (c == KEY_UP && y > 0) new_y-=2;
-            if (c == KEY_DOWN && y < max_y - 1) new_y+=2;
-            if (c == KEY_RIGHT && x < max_x - 1) new_x+=2;
-            if (c == KEY_LEFT && x > 0) new_x-=2;
-            current_user->spells.speed_spell_counter-=1;
-            if(current_user->spells.speed_spell_counter==0) current_user->spells.speed_spell_counter=0;
+        if(current_user->spells.speed_spell_counter > 0) {
+            if (c == 'k' && y < max_y - 1) new_y += 2;
+            if (c == 'j' && y > 0) new_y -= 2;
+            if (c == 'l' && x < max_x - 1) new_x += 2;
+            if (c == 'h' && x > 0) new_x -= 2;
+
+            if (c == 'y' && y > 0 && x > 0) {
+                new_y -= 2;
+                new_x -= 2;
+            }
+            if (c == 'u' && y > 0 && x < max_x - 1) {
+                new_y -= 2;
+                new_x += 2;
+            }
+            if (c == 'b' && y < max_y - 1 && x > 0) {
+                new_y += 2;
+                new_x -= 2;
+            }
+            if (c == 'n' && y < max_y - 1 && x < max_x - 1) {
+                new_y += 2;
+                new_x += 2;
+            }
+
+            current_user->spells.speed_spell_counter -= 1;
+            if(current_user->spells.speed_spell_counter == 0)
+                current_user->spells.speed_spell_counter = 0;
         }
-        else{
-            if (c == KEY_UP && y > 0) new_y--;
-            if (c == KEY_DOWN && y < max_y - 1) new_y++;
-            if (c == KEY_RIGHT && x < max_x - 1) new_x++;
-            if (c == KEY_LEFT && x > 0) new_x--;
+        else {
+            if (c == 'k' && y < max_y - 1) new_y++;
+            if (c == 'j' && y > 0) new_y--;
+            if (c == 'l' && x < max_x - 1) new_x++;
+            if (c == 'h' && x > 0) new_x--;
 
+            if (c == 'y' && y > 0 && x > 0) {
+                new_y--;
+                new_x--;
+            }
+            if (c == 'u' && y > 0 && x < max_x - 1) {
+                new_y--;
+                new_x++;
+            }
+            if (c == 'b' && y < max_y - 1 && x > 0) {
+                new_y++;
+                new_x--;
+            }
+            if (c == 'n' && y < max_y - 1 && x < max_x - 1) {
+                new_y++;
+                new_x++;
+            }
         }
 
         if(current_user->spells.damage_spell_counter>0){
@@ -3918,9 +4191,6 @@ int game_f2(struct user *current_user , int level) {
         } else {
             k=1;
         }
-
-
-
 
 
         if( (map[new_y][new_x] == '+' && (locked[new_y][new_x]==0 || locked[new_y][new_x]==2)) || map[new_y][new_x] == '$'|| map[new_y][new_x] == '@' || map[new_y][new_x] == '.' ||
@@ -4229,13 +4499,13 @@ int game_f2(struct user *current_user , int level) {
             }
         }
         else if(current_user->game_setting.game_level==1){
-            if(counter==25){
+            if(counter==28){
                 health--;
                 counter=0;
             }
         }
         else if(current_user->game_setting.game_level==2){
-            if(counter==15){
+            if(counter==18){
                 health--;
                 counter=0;
             }
@@ -4257,6 +4527,7 @@ int game_f2(struct user *current_user , int level) {
             }
         }
         if(health==0){
+            stop_background_music();
             current_user->new_golds+=total_black_gold+total_yellow_gold;
             current_user->total_gold+=current_user->new_golds;
             return 0;
@@ -4273,7 +4544,7 @@ int game_f2(struct user *current_user , int level) {
         int sx = new_x_s -  new_x;
         int sy = new_y_s - new_y;
 
-        if(c=='p' || c=='P') {
+        if(c=='s' || c=='S') {
             if (in_use_weapon == 1) {
                 if ((abs(dy) == 1 || abs(dy) == -1 || abs(dy) == 0) &&
                     (abs(dx) == 1 || abs(dx) == -1 || abs(dx) == 0)) {
@@ -4358,20 +4629,28 @@ int game_f2(struct user *current_user , int level) {
         }
 
         ///////////dagger
-        if(in_use_weapon == 2 && previous_c == 'p') {
+        if(in_use_weapon == 2 && previous_c == 's') {
             start_dagger = 1;
             xfor2 = new_x;
             yfor2 = new_y;
             counterfor2 = 1;
             switch (c) {
-                case 'a':
-                    da++; break;
-                case 'w':
+                case 'w':  // Up
                     dw++; break;
-                case 's':
-                    ds++; break;
-                case 'd':
+                case 'x':  // Down
+                    dx1++; break;
+                case 'a':  // Left
+                    da++; break;
+                case 'd':  // Right
                     dd++; break;
+                case 'q':  // Up-Left
+                    dq++; break;
+                case 'e':  // Up-Right
+                    de++; break;
+                case 'z':  // Down-Left
+                    dz++; break;
+                case 'c':  // Down-Right
+                    dc++; break;
             }
 
             current_user->weapons.Dagger_count--;
@@ -4386,9 +4665,17 @@ int game_f2(struct user *current_user , int level) {
                 fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
-                counterfor2=0;
-                start_dagger=0;
+                counterfor2 = 0;
+                start_dagger = 0;
             }
+            if(xfor2 == new_x_s && yfor2 == new_y_s) {
+                snake_health -= 10*k;
+                if(snake_health <= 0) snake_health = 0;
+                mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
+                counterfor2 = 0;
+                start_dagger = 0;
+            }
+
             if(xfor2 == new_x_f2 && yfor2 == new_y_f2 && current_user->game_setting.game_level==2) {
                 fire_health2 -= 10*k;
                 if(fire_health2 <= 0) fire_health2 = 0;
@@ -4397,93 +4684,121 @@ int game_f2(struct user *current_user , int level) {
                 start_dagger=0;
             }
 
-            if(xfor2 == new_x_s && yfor2 == new_y_s) {
-                snake_health -= 10*k;
-                if(snake_health <= 0) snake_health = 0;
-                mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
-                counterfor2=0;start_dagger=0;
-            }
             if(xfor2 == xd && yfor2 == yd) {
                 deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
-                mvprintw(3, 3, "You hit Deamon!  health: %d/5                                    ", deamon_health);
-                counterfor2=0;
-                start_dagger=0;
-            }
-
-            if(da==1) {
-                xfor2--;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
-                    counterfor2=0;
-                    if(map[yfor2][xfor2+1]=='.')
-                    {
-                        map[yfor2][xfor2+1]='z';
-                    }
-                }
-            }
-            else if(ds==1) {
-                yfor2++;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
-                    counterfor2=0;
-                    if(map[yfor2-1][xfor2]=='.')
-                    {
-                        map[yfor2-1][xfor2]='z';
-                    }
-                }
-            }
-            else if(dd==1) {
-                xfor2++;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
-                    counterfor2=0;
-                    if(map[yfor2][xfor2-1]=='.')
-                    {
-                        map[yfor2][xfor2-1]='z';
-                    }
-                }
-            }
-            else if(dw==1) {
-                yfor2--;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
-                    counterfor2=0;
-                    if(map[yfor2+1][xfor2]=='.')
-                    {
-                        map[yfor2+1][xfor2]='z';
-                    }
-                }
-            }
-
-            counterfor2++;
-            if(counterfor2 >= 5) {
-                if(map[yfor2][xfor2]=='.'){
-                    map[yfor2][xfor2]='z'; // z represents 1 dagger
-                }
-                start_dagger = 0;
+                mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
                 counterfor2 = 0;
-                dd=0; da=0; dw=0; ds=0;
+                start_dagger = 0;
             }
-            if(map[yfor2][xfor2]=='.'){
-                mvaddch(yfor2, xfor2, '*');
+
+            if(da == 1) {  // Left
+                xfor2--;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2][xfor2+1] == '.') map[yfor2][xfor2+1] = 'z';
+                }
+            }
+            else if(dd == 1) {  // Right
+                xfor2++;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_') {
+                    counterfor2 = 0;
+                    if(map[yfor2][xfor2-1] == '.') map[yfor2][xfor2-1] = 'z';
+                }
+            }
+            else if(dw == 1) {  // Up
+                yfor2--;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_') {
+                    counterfor2 = 0;
+                    if(map[yfor2+1][xfor2] == '.') map[yfor2+1][xfor2] = 'z';
+                }
+            }
+            else if(dx1 == 1) {  // Down
+                yfor2++;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_') {
+                    counterfor2 = 0;
+                    if(map[yfor2-1][xfor2] == '.') map[yfor2-1][xfor2] = 'z';
+                }
+            }
+            else if(dq == 1) {  // Up-Left
+                xfor2--;
+                yfor2--;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2+1][xfor2+1] == '.') map[yfor2+1][xfor2+1] = 'z';
+                }
+            }
+            else if(de == 1) {  // Up-Right
+                xfor2++;
+                yfor2--;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2+1][xfor2-1] == '.') map[yfor2+1][xfor2-1] = 'z';
+                }
+            }
+            else if(dz == 1) {  // Down-Left
+                xfor2--;
+                yfor2++;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2-1][xfor2+1] == '.') map[yfor2-1][xfor2+1] = 'z';
+                }
+            }
+            else if(dc == 1) {  // Down-Right
+                xfor2++;
+                yfor2++;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2-1][xfor2-1] == '.') map[yfor2-1][xfor2-1] = 'z';
+                }
+            }
+
+            if(start_dagger!=0){
+                counterfor2++;
+                if(counterfor2 >= 5) {
+                    if(map[yfor2][xfor2] == '.') {
+                        map[yfor2][xfor2] = 'z';  // z represents 1 dagger
+                    }
+                    start_dagger = 0;
+                    counterfor2 = 0;
+                    dd = 0; da = 0; dw = 0; dx1 = 0;
+                    dq = 0; de = 0; dz = 0; dc = 0;
+                }
+
+                if(map[yfor2][xfor2] == '.') {
+                    mvaddch(yfor2, xfor2, '*');
+                }
+
             }
             refresh();
         }
+
         ////////////
 
 
         ///////////normal arrow
-        if(in_use_weapon == 4 && previous_c == 'p') {
+        if(in_use_weapon == 4 && previous_c == 's') {
             start_normal_arrow = 1;
             xfor4 = new_x;
             yfor4 = new_y;
             counterfor4 = 1;
             switch (c) {
-                case 'a':
+                case 'a':  // Left
                     na++; break;
-                case 'w':
+                case 'w':  // Up
                     nw++; break;
-                case 's':
-                    ns++; break;
-                case 'd':
+                case 'x':  // Down
+                    nx++; break;
+                case 'd':  // Right
                     nd++; break;
+                case 'q':  // Up-Left
+                    nq++; break;
+                case 'e':  // Up-Right
+                    ne++; break;
+                case 'z':  // Down-Left
+                    nz++; break;
+                case 'c':  // Down-Right
+                    nc++; break;
             }
 
             current_user->weapons.Normal_Arrow_count--;
@@ -4498,8 +4813,22 @@ int game_f2(struct user *current_user , int level) {
                 fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
-                counterfor4=0;
-                start_normal_arrow=0;
+                counterfor4 = 0;
+                start_normal_arrow = 0;
+            }
+            if(xfor4 == new_x_s && yfor4 == new_y_s) {
+                snake_health -= 10*k;
+                if(snake_health <= 0) snake_health = 0;
+                mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
+                counterfor4 = 0;
+                start_normal_arrow = 0;
+            }
+            if(xfor4 == xd && yfor4 == yd) {
+                deamon_health -= 10*k;
+                if(deamon_health <= 0) deamon_health = 0;
+                mvprintw(3, 3, "You hit Demon!  health: %d/5                                     ", deamon_health);
+                counterfor4 = 0;
+                start_normal_arrow = 0;
             }
             if(xfor4 == new_x_f2 && yfor4 == new_y_f2 && current_user->game_setting.game_level==2) {
                 fire_health2 -= 10*k;
@@ -4509,73 +4838,78 @@ int game_f2(struct user *current_user , int level) {
                 start_normal_arrow=0;
             }
 
-            if(xfor4 == new_x_s && yfor2 == new_y_s) {
-                snake_health -= 10*k;
-                if(snake_health <= 0) snake_health = 0;
-                mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
-                counterfor4=0;
-                start_normal_arrow=0;
-            }
-            if(xfor4 == xd && yfor4== yd) {
-                deamon_health -= 10*k;
-                if(deamon_health <= 0) deamon_health = 0;
-                mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
-                counterfor4=0;
-                start_normal_arrow=0;
-            }
-
-            if(na==1) {
+            if(na == 1) {
                 xfor4--;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
-                    counterfor4=0;
-                    if(map[yfor4][xfor4+1]=='.')
-                    {
-                        map[yfor4][xfor4+1]='c';
-                    }
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4][xfor4+1] == '.') map[yfor4][xfor4+1] = 'c';
                 }
             }
-            else if(ns==1) {
+            else if(nx == 1) {
                 yfor4++;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
-                    counterfor4=0;
-                    if(map[yfor4-1][xfor4]=='.')
-                    {
-                        map[yfor4-1][xfor4]='c';
-                    }
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4-1][xfor4] == '.') map[yfor4-1][xfor4] = 'c';
                 }
             }
-            else if(nd==1) {
+            else if(nd == 1) {
                 xfor4++;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
-                    counterfor4=0;
-                    if(map[yfor4][xfor4-1]=='.')
-                    {
-                        map[yfor4][xfor4-1]='c';
-                    }
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4][xfor4-1] == '.') map[yfor4][xfor4-1] = 'c';
                 }
             }
-            else if(nw==1) {
+            else if(nw == 1) {
                 yfor4--;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
-                    counterfor4=0;
-                    if(map[yfor4+1][xfor4]=='.')
-                    {
-                        map[yfor4+1][xfor4]='c';
-                    }
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4+1][xfor4] == '.') map[yfor4+1][xfor4] = 'c';
+                }
+            }
+            else if(nq == 1) {
+                yfor4--; xfor4--;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4+1][xfor4+1] == '.') map[yfor4+1][xfor4+1] = 'c';
+                }
+            }
+            else if(ne == 1) {
+                yfor4--; xfor4++;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4+1][xfor4-1] == '.') map[yfor4+1][xfor4-1] = 'c';
+                }
+            }
+            else if(nz == 1) {
+                yfor4++; xfor4--;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4-1][xfor4+1] == '.') map[yfor4-1][xfor4+1] = 'c';
+                }
+            }
+            else if(nc == 1) {
+                yfor4++; xfor4++;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4-1][xfor4-1] == '.') map[yfor4-1][xfor4-1] = 'c';
                 }
             }
 
-            counterfor4++;
-            if(counterfor4 >= 5) {
-                if(map[yfor4][xfor4]=='.'){
-                    map[yfor4][xfor4]='c'; // c represents 1 normal arrow
+            if(start_normal_arrow != 0) {
+                counterfor4++;
+                if(counterfor4 >= 5) {
+                    if(map[yfor4][xfor4] == '.') {
+                        map[yfor4][xfor4] = 'c';  // c represents 1 normal arrow
+                    }
+                    start_normal_arrow = 0;
+                    counterfor4 = 0;
+                    nd = 0; na = 0; nw = 0; nx = 0;
+                    nq = 0; ne = 0; nz = 0; nc = 0;
                 }
-                start_normal_arrow = 0;
-                counterfor4 = 0;
-                nd=0; na=0; nw=0; ns=0;
-            }
-            if(map[yfor4][xfor4]=='.'){
-                mvaddch(yfor4, xfor4, '-');
+                if(map[yfor4][xfor4] == '.') {
+
+                    mvaddch(yfor4, xfor4, '-');
+                }
             }
 
             refresh();
@@ -4583,7 +4917,7 @@ int game_f2(struct user *current_user , int level) {
         ////////////
 
         ///////////Magic wand
-        if(in_use_weapon == 3 && previous_c == 'p') {
+        if(in_use_weapon == 3 && previous_c == 's') {
             start_magic_wand = 1;
             xfor3 = new_x;
             yfor3 = new_y;
@@ -4593,10 +4927,18 @@ int game_f2(struct user *current_user , int level) {
                     ma++; break;
                 case 'w':
                     mw++; break;
-                case 's':
-                    ms++; break;
+                case 'x':
+                    mx++; break;
                 case 'd':
                     md++; break;
+                case 'q':
+                    mq++; break;
+                case 'e':
+                    me++; break;
+                case 'z':
+                    mz++; break;
+                case 'c':
+                    mc++; break;
             }
 
             current_user->weapons.Magic_Wand_count--;
@@ -4611,8 +4953,23 @@ int game_f2(struct user *current_user , int level) {
                 fire_health -= 15*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
-                counterfor3=0;
-                start_magic_wand=0;
+                counterfor3 = 0;
+                start_magic_wand = 0;
+            }
+            if(xfor3 == new_x_s && yfor3 == new_y_s) {
+                snake_health -= 15*k;
+                if(snake_health <= 0) snake_health = 0;
+                mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
+                counterfor3 = 0;
+                snake_chase = 0;
+                start_magic_wand = 0;
+            }
+            if(xfor3 == xd && yfor3 == yd) {
+                deamon_health -= 15*k;
+                if(deamon_health <= 0) deamon_health = 0;
+                mvprintw(3, 3, "You hit Deamon!  health: %d/5                                  ", deamon_health);
+                counterfor3 = 0;
+                start_magic_wand = 0;
             }
             if(xfor3 == new_x_f2 && yfor3 == new_y_f2 && current_user->game_setting.game_level==2) {
                 fire_health2 -= 15*k;
@@ -4621,78 +4978,89 @@ int game_f2(struct user *current_user , int level) {
                 counterfor3=0;
                 start_magic_wand=0;
             }
-            if(xfor3 == new_x_s && yfor3 == new_y_s) {
-                snake_health -= 15*k;
-                if(snake_health <= 0) snake_health = 0;
-                mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
-                counterfor3=0;
-                snake_chase=0;
-                start_magic_wand=0;
-            }
-            if(xfor3 == xd && yfor3 == yd) {
-                deamon_health -= 15*k;
-                if(deamon_health <= 0) deamon_health = 0;
-                mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
-                counterfor3=0;
-                start_magic_wand=0;
-            }
 
-            if(ma==1) {
+            if(ma == 1) {
                 xfor3--;
-                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
-                    counterfor3=0;
-                    if(map[yfor3][xfor3+1]=='.')
-                    {
-                        map[yfor3][xfor3+1]='x';
-                    }
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3][xfor3+1] == '.') map[yfor3][xfor3+1] = 'x';
                 }
             }
-            else if(ms==1) {
+            else if(mx == 1) {
                 yfor3++;
-                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
-                    counterfor3=0;
-                    if(map[yfor3-1][xfor3+1]=='.')
-                    {
-                        map[yfor3-1][xfor3+1]='x';
-                    }
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3-1][xfor3] == '.') map[yfor3-1][xfor3] = 'x';
                 }
             }
-            else if(md==1) {
+            else if(md == 1) {
                 xfor3++;
-                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
-                    counterfor3=0;
-                    if(map[yfor3][xfor3-1]=='.')
-                    {
-                        map[yfor3][xfor3-1]='x';
-                    }
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3][xfor3-1] == '.') map[yfor3][xfor3-1] = 'x';
                 }
             }
-            else if(mw==1) {
+            else if(mw == 1) {
                 yfor3--;
-                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
-                    counterfor3=0;
-                    if(map[yfor3+1][xfor3]=='.')
-                    {
-                        map[yfor3+1][xfor3]='x';
-                    }
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3+1][xfor3] == '.') map[yfor3+1][xfor3] = 'x';
                 }
             }
 
-            counterfor3++;
-            if(counterfor3 >= 5) {
-                if(map[yfor3][xfor3]=='.'){
-                    map[yfor3][xfor3]='x'; // x represents 1 magic wand
+            else if(mq == 1) {
+                yfor3--; xfor3--;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3+1][xfor3+1] == '.') map[yfor3+1][xfor3+1] = 'x';
                 }
-                start_magic_wand = 0;
-                counterfor3 = 0;
-                md=0; ma=0; mw=0; ms=0;
             }
-            if(map[yfor3][xfor3]=='.'){
-                mvaddch(yfor3, xfor3, '+');
+            else if(me == 1) {
+                yfor3--; xfor3++;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3+1][xfor3-1] == '.') map[yfor3+1][xfor3-1] = 'x';
+                }
             }
+            else if(mz == 1) {
+                yfor3++; xfor3--;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3-1][xfor3+1] == '.') map[yfor3-1][xfor3+1] = 'x';
+                }
+            }
+            else if(mc == 1) {
+                yfor3++; xfor3++;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3-1][xfor3-1] == '.') map[yfor3-1][xfor3-1] = 'x';
+                }
+            }
+
+            if(start_magic_wand != 0) {
+                counterfor3++;
+                if(counterfor3 >= 5) {
+                    if(map[yfor3][xfor3] == '.') {
+                        map[yfor3][xfor3] = 'x';
+                    }
+                    start_magic_wand = 0;
+                    counterfor3 = 0;
+                    md = 0; ma = 0; mw = 0; mx = 0;
+                    mq = 0; me = 0; mz = 0; mc = 0;
+                }
+                if(map[yfor3][xfor3] == '.') {
+                    char magic_char = '+';
+                    if((mq == 1 || mc == 1) || (me == 1 || mz == 1)) {
+                        magic_char = '*';
+                    }
+                    mvaddch(yfor3, xfor3, magic_char);
+                }
+            }
+
             mvprintw(2, 3, "                                                            ");
             refresh();
         }
+
         ////////////
 
 
@@ -4719,10 +5087,11 @@ int game_f2(struct user *current_user , int level) {
                     attroff(COLOR_PAIR(14));
                 }
                 else {
-                    mvprintw(3,3,"The door is locked. Press L to enter the pass !");
+                    mvprintw(3,3,"The door is locked. Press [t] to enter the pass !");
                 }
-                if(c=='l' && password_counter<=3){
+                if((c=='t' || c == 'T') && password_counter<=3){
                     status=code(password);
+                    curs_set(0);
                     password_counter++;
                 }
                 if(status==1 && password_counter<=3 ){
@@ -4762,18 +5131,19 @@ int game_f2(struct user *current_user , int level) {
             strcpy(password,"0");
         }
         if(food>=10){
-            if(food4health_counter>=4){
-                if(current_user->spells.health_spell_counter>0){
+            if(current_user->spells.health_spell_counter>0){
+                current_user->spells.health_spell_counter-=1;
+                if(current_user->spells.health_spell_counter<0) current_user->spells.health_spell_counter=0;
+                if(food4health_counter>=4){
                     health+=2;
-                    current_user->spells.health_spell_counter-=1;
-                    if(current_user->spells.health_spell_counter<0) current_user->spells.health_spell_counter=0;
+                    food4health_counter=0;
                 }
-                else{
-                    health+=1;
-                }
-                if(health>10) health=10;
+            }
+            else if(current_user->spells.health_spell_counter==0 && food4health_counter>=4){
+                health+=1;
                 food4health_counter=0;
             }
+            if(health>10) health=10;
         }
 
         mvprintw(max_y-2,60,"floor : 2");
@@ -5352,7 +5722,8 @@ int game_f3(struct user *current_user , int level) {
     while(1){
         int y5=rand()%max_y;
         int x5=rand()%max_x;
-        if(map[y5][x5]=='.' && room_number[y5][x5]==locked_room_num){
+        if(map[y5][x5]=='.' && room_number[y5][x5]==locked_room_num && locked[y5+1][x5]==0 &&
+           locked[y5][x5+1]==0 && locked[y5-1][x5]==0 && locked[y5][x5-1]==0){
             map[y5][x5]='=';
             break;
         }
@@ -5415,9 +5786,9 @@ int game_f3(struct user *current_user , int level) {
    /////
 
     ///--->> giant <<---///
-    int xg=0, yg=0;
-    int countg=0;
-    if(current_user->game_setting.game_level==1 || current_user->game_setting.game_level==2 ) {
+    int xg,yg;
+    int countg;
+    countg=0;
         while (countg == 0) {
             xg = rand() % max_x;
             yg = rand() % max_y;
@@ -5425,7 +5796,6 @@ int game_f3(struct user *current_user , int level) {
                 countg++;
             }
         }
-    }
 //    ////////////////////////
 //
 //
@@ -5517,9 +5887,10 @@ int game_f3(struct user *current_user , int level) {
     int undeed_health = 30;
     int snake_chase=0;
     char previous_c;
-    int start_normal_arrow=0;  int xfor4, yfor4, counterfor4;int nw=0,na=0,ns=0,nd=0;
-    int start_magic_wand=0;  int xfor3, yfor3, counterfor3;int mw=0,ma=0,ms=0,md=0;
-    int start_dagger=0;  int xfor2, yfor2, counterfor2; int dw=0,da=0,ds=0,dd=0;
+    int start_normal_arrow=0;  int xfor4, yfor4, counterfor4;int nw=0,na=0,nx=0,nd=0 ,nq=0,ne=0,nz=0,nc=0;
+    int start_magic_wand=0;  int xfor3, yfor3, counterfor3;int mw=0,ma=0,mx=0,md=0 ,mq=0,me=0,mz=0,mc=0;
+    int start_dagger=0;  int xfor2, yfor2, counterfor2; int dw=0,da=0,dx1=0,dd=0 ,dq=0,de=0,dz=0,dc=0;
+
     int is_sth_here[max_y][max_x];
     for(int j=0;j<max_y;j++){
         for(int i=0;i<max_x;i++){
@@ -5534,6 +5905,7 @@ int game_f3(struct user *current_user , int level) {
 
 
     do {
+        check_and_replay_music();
         //print map
         for(int i = 0; i < max_y; i++) {
             for(int j = 0; j < max_x; j++) {
@@ -5686,7 +6058,7 @@ int game_f3(struct user *current_user , int level) {
         int new_y = y;
         int new_x = x;
 
-        if(c=='h'){
+        if(c=='p'){
             help();
         }
 
@@ -5696,7 +6068,7 @@ int game_f3(struct user *current_user , int level) {
 
         }
 
-        if(c ==101) { ///food window
+        if(c =='r') { ///food window
             clear();
             int p= food_bar(&food1, &health, &food);
             if(p==3){
@@ -5706,22 +6078,57 @@ int game_f3(struct user *current_user , int level) {
         }
         ///movement
 
-        if(current_user->spells.speed_spell_counter>0){
-            if (c == KEY_UP && y > 0) new_y-=2;
-            if (c == KEY_DOWN && y < max_y - 1) new_y+=2;
-            if (c == KEY_RIGHT && x < max_x - 1) new_x+=2;
-            if (c == KEY_LEFT && x > 0) new_x-=2;
-            current_user->spells.speed_spell_counter-=1;
-            if(current_user->spells.speed_spell_counter==0) current_user->spells.speed_spell_counter=0;
-        }
-        else{
-            if (c == KEY_UP && y > 0) new_y--;
-            if (c == KEY_DOWN && y < max_y - 1) new_y++;
-            if (c == KEY_RIGHT && x < max_x - 1) new_x++;
-            if (c == KEY_LEFT && x > 0) new_x--;
+        if(current_user->spells.speed_spell_counter > 0) {
+            if (c == 'k' && y < max_y - 1) new_y += 2;  // Down
+            if (c == 'j' && y > 0) new_y -= 2;          // Up
+            if (c == 'l' && x < max_x - 1) new_x += 2;  // Right
+            if (c == 'h' && x > 0) new_x -= 2;          // Left
 
+            if (c == 'y' && y > 0 && x > 0) {               // Up-Left
+                new_y -= 2;
+                new_x -= 2;
+            }
+            if (c == 'u' && y > 0 && x < max_x - 1) {       // Up-Right
+                new_y -= 2;
+                new_x += 2;
+            }
+            if (c == 'b' && y < max_y - 1 && x > 0) {       // Down-Left
+                new_y += 2;
+                new_x -= 2;
+            }
+            if (c == 'n' && y < max_y - 1 && x < max_x - 1) { // Down-Right
+                new_y += 2;
+                new_x += 2;
+            }
+
+            current_user->spells.speed_spell_counter -= 1;
+            if(current_user->spells.speed_spell_counter == 0)
+                current_user->spells.speed_spell_counter = 0;
         }
-        mvprintw(2,max_x-30,"[h] to open help menu");
+        else {
+            if (c == 'k' && y < max_y - 1) new_y++;
+            if (c == 'j' && y > 0) new_y--;
+            if (c == 'l' && x < max_x - 1) new_x++;
+            if (c == 'h' && x > 0) new_x--;
+
+            if (c == 'y' && y > 0 && x > 0) {
+                new_y--;
+                new_x--;
+            }
+            if (c == 'u' && y > 0 && x < max_x - 1) {
+                new_y--;
+                new_x++;
+            }
+            if (c == 'b' && y < max_y - 1 && x > 0) {
+                new_y++;
+                new_x--;
+            }
+            if (c == 'n' && y < max_y - 1 && x < max_x - 1) {
+                new_y++;
+                new_x++;
+            }
+        }
+        mvprintw(2,max_x-30,"[p] to open help menu");
 
         if(current_user->spells.damage_spell_counter>0){
             k=2;
@@ -5947,11 +6354,14 @@ int game_f3(struct user *current_user , int level) {
 
         }
 
-        ///giant
-        if(current_user->game_setting.game_level==1 || current_user->game_setting.game_level==2){
-            int new_x_g , new_y_g;
-            int gx = new_x - xg;
-            int gy = new_y - yg;
+        int new_x_g , new_y_g;
+        int gx = new_x - xg;
+        int gy = new_y - yg;
+
+
+
+        //giant
+        if(giant_health>0){
 
             if(giant_health>0){
                 if(room_number[new_y][new_x] == room_number[yf][xf]  ) {
@@ -5973,10 +6383,8 @@ int game_f3(struct user *current_user , int level) {
                         }
                         new_x_g=new_x;
                     }
-
                     if(map[new_y_g][new_x_g]!=' '){
                         move_giant(new_y_g, new_x_g);
-
                     }
                 }
                 refresh();
@@ -5996,8 +6404,6 @@ int game_f3(struct user *current_user , int level) {
 
             }
         }
-
-
 
 
         //////----------------------
@@ -6043,13 +6449,13 @@ int game_f3(struct user *current_user , int level) {
             }
         }
         else if(current_user->game_setting.game_level==1){
-            if(counter==25){
+            if(counter==28){
                 health--;
                 counter=0;
             }
         }
         else if(current_user->game_setting.game_level==2){
-            if(counter==15){
+            if(counter==18){
                 health--;
                 counter=0;
             }
@@ -6072,6 +6478,7 @@ int game_f3(struct user *current_user , int level) {
         }
 
         if(health==0){
+            stop_background_music();
             current_user->new_golds+=total_black_gold+total_yellow_gold;
             current_user->total_gold+=current_user->new_golds;
             return 0;
@@ -6089,9 +6496,11 @@ int game_f3(struct user *current_user , int level) {
         int dy = yd - new_y;
         fx = new_x_f -  new_x;
         fy = new_y_f - new_y;
+        gx = new_x_g -  new_x;
+        gy = new_y_g - new_y;
         int sx = new_x_s -  new_x;
         int sy = new_y_s - new_y;
-        if(c=='p' || c=='P') {
+        if(c=='s' || c=='S') {
             if (in_use_weapon == 1) {
                 if ((abs(dy) == 1 || abs(dy) == -1 || abs(dy) == 0) &&
                     (abs(dx) == 1 || abs(dx) == -1 || abs(dx) == 0)) {
@@ -6114,7 +6523,7 @@ int game_f3(struct user *current_user , int level) {
 
                 }
                 if ((abs(gy) == 1 || abs(gy) == -1 || abs(gy) == 0) &&
-                    (abs(gx) == 1 || abs(gx) == -1 || abs(gx) == 0) && (current_user->game_setting.game_level==1 || current_user->game_setting.game_level==2)) {
+                    (abs(gx) == 1 || abs(gx) == -1 || abs(gx) == 0) ) {
                     giant_health -= 5*k;
                     if (giant_health <= 0) {
                         giant_health = 0;
@@ -6153,7 +6562,7 @@ int game_f3(struct user *current_user , int level) {
 
                 }
                 if ((abs(gy) == 1 || abs(gy) == -1 || abs(gy) == 0) &&
-                    (abs(gx) == 1 || abs(gx) == -1 || abs(gx) == 0) && (current_user->game_setting.game_level==1 || current_user->game_setting.game_level==2)) {
+                    (abs(gx) == 1 || abs(gx) == -1 || abs(gx) == 0) ) {
                     giant_health -= 5*k;
                     if (giant_health <= 0) {
                         giant_health = 0;
@@ -6174,20 +6583,28 @@ int game_f3(struct user *current_user , int level) {
         }
 
         ///////////dagger
-        if(in_use_weapon == 2 && previous_c == 'p') {
+        if(in_use_weapon == 2 && previous_c == 's') {
             start_dagger = 1;
             xfor2 = new_x;
             yfor2 = new_y;
             counterfor2 = 1;
             switch (c) {
-                case 'a':
-                    da++; break;
-                case 'w':
+                case 'w':  // Up
                     dw++; break;
-                case 's':
-                    ds++; break;
-                case 'd':
+                case 'x':  // Down
+                    dx1++; break;
+                case 'a':  // Left
+                    da++; break;
+                case 'd':  // Right
                     dd++; break;
+                case 'q':  // Up-Left
+                    dq++; break;
+                case 'e':  // Up-Right
+                    de++; break;
+                case 'z':  // Down-Left
+                    dz++; break;
+                case 'c':  // Down-Right
+                    dc++; break;
             }
 
             current_user->weapons.Dagger_count--;
@@ -6202,22 +6619,22 @@ int game_f3(struct user *current_user , int level) {
                 fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
-                counterfor2=0;
-                start_dagger=0;
+                counterfor2 = 0;
+                start_dagger = 0;
             }
             if(xfor2 == new_x_s && yfor2 == new_y_s) {
                 snake_health -= 10*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
-                counterfor2=0;
-                start_dagger=0;
+                counterfor2 = 0;
+                start_dagger = 0;
             }
             if(xfor2 == xd && yfor2 == yd) {
                 deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
                 mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
-                counterfor2=0;
-                start_dagger=0;
+                counterfor2 = 0;
+                start_dagger = 0;
             }
             if(xfor2 == xg && yfor2 == yg && (current_user->game_setting.game_level==1 || current_user->game_setting.game_level==2)) {
                 giant_health -= 10*k;
@@ -6227,79 +6644,115 @@ int game_f3(struct user *current_user , int level) {
                 start_dagger=0;
             }
 
-            if(da==1) {
+
+            if(da == 1) {  // Left
                 xfor2--;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
-                    counterfor2=0;
-                    if(map[yfor2][xfor2+1]=='.')
-                    {
-                        map[yfor2][xfor2+1]='z';
-                    }
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2][xfor2+1] == '.') map[yfor2][xfor2+1] = 'z';
                 }
             }
-            else if(ds==1) {
-                yfor2++;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
-                    counterfor2=0;
-                    if(map[yfor2-1][xfor2]=='.')
-                    {
-                        map[yfor2-1][xfor2]='z';
-                    }
-                }
-            }
-            else if(dd==1) {
+            else if(dd == 1) {  // Right
                 xfor2++;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
-                    counterfor2=0;
-                    if(map[yfor2][xfor2-1]=='.')
-                    {
-                        map[yfor2][xfor2-1]='z';
-                    }
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_') {
+                    counterfor2 = 0;
+                    if(map[yfor2][xfor2-1] == '.') map[yfor2][xfor2-1] = 'z';
                 }
             }
-            else if(dw==1) {
+            else if(dw == 1) {  // Up
                 yfor2--;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
-                    counterfor2=0;
-                    if(map[yfor2+1][xfor2]=='.')
-                    {
-                        map[yfor2+1][xfor2]='z';
-                    }
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_') {
+                    counterfor2 = 0;
+                    if(map[yfor2+1][xfor2] == '.') map[yfor2+1][xfor2] = 'z';
+                }
+            }
+            else if(dx1 == 1) {  // Down
+                yfor2++;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_') {
+                    counterfor2 = 0;
+                    if(map[yfor2-1][xfor2] == '.') map[yfor2-1][xfor2] = 'z';
+                }
+            }
+            else if(dq == 1) {  // Up-Left
+                xfor2--;
+                yfor2--;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2+1][xfor2+1] == '.') map[yfor2+1][xfor2+1] = 'z';
+                }
+            }
+            else if(de == 1) {  // Up-Right
+                xfor2++;
+                yfor2--;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2+1][xfor2-1] == '.') map[yfor2+1][xfor2-1] = 'z';
+                }
+            }
+            else if(dz == 1) {  // Down-Left
+                xfor2--;
+                yfor2++;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2-1][xfor2+1] == '.') map[yfor2-1][xfor2+1] = 'z';
+                }
+            }
+            else if(dc == 1) {  // Down-Right
+                xfor2++;
+                yfor2++;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2-1][xfor2-1] == '.') map[yfor2-1][xfor2-1] = 'z';
                 }
             }
 
-            counterfor2++;
-            if(counterfor2 >= 5) {
-                if(map[yfor2][xfor2]=='.'){
-                    map[yfor2][xfor2]='z'; // z represents 1 dagger
+            if(start_dagger!=0){
+                counterfor2++;
+                if(counterfor2 >= 5) {
+                    if(map[yfor2][xfor2] == '.') {
+                        map[yfor2][xfor2] = 'z';  // z represents 1 dagger
+                    }
+                    start_dagger = 0;
+                    counterfor2 = 0;
+                    dd = 0; da = 0; dw = 0; dx1 = 0;
+                    dq = 0; de = 0; dz = 0; dc = 0;
                 }
-                start_dagger = 0;
-                counterfor2 = 0;
-                dd=0; da=0; dw=0; ds=0;
+
+                if(map[yfor2][xfor2] == '.') {
+                    mvaddch(yfor2, xfor2, '*');
+                }
+
             }
-            if(map[yfor2][xfor2]=='.'){
-                mvaddch(yfor2, xfor2, '*');
-            }
+
             refresh();
         }
+
         ////////////
 
 
         ///////////normal arrow
-        if(in_use_weapon == 4 && previous_c == 'p') {
+        if(in_use_weapon == 4 && previous_c == 's') {
             start_normal_arrow = 1;
             xfor4 = new_x;
             yfor4 = new_y;
             counterfor4 = 1;
             switch (c) {
-                case 'a':
+                case 'a':  // Left
                     na++; break;
-                case 'w':
+                case 'w':  // Up
                     nw++; break;
-                case 's':
-                    ns++; break;
-                case 'd':
+                case 'x':  // Down
+                    nx++; break;
+                case 'd':  // Right
                     nd++; break;
+                case 'q':  // Up-Left
+                    nq++; break;
+                case 'e':  // Up-Right
+                    ne++; break;
+                case 'z':  // Down-Left
+                    nz++; break;
+                case 'c':  // Down-Right
+                    nc++; break;
             }
 
             current_user->weapons.Normal_Arrow_count--;
@@ -6311,25 +6764,25 @@ int game_f3(struct user *current_user , int level) {
         if(start_normal_arrow == 1 && counterfor4 > 0) {
 
             if(xfor4 == new_x_f && yfor4 == new_y_f) {
-                fire_health -= 15*k;
+                fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
-                counterfor4=0;
-                start_normal_arrow=0;
+                counterfor4 = 0;
+                start_normal_arrow = 0;
             }
-            if(xfor4 == new_x_s && yfor2 == new_y_s) {
-                snake_health -= 15*k;
+            if(xfor4 == new_x_s && yfor4 == new_y_s) {
+                snake_health -= 10*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
-                counterfor4=0;
-                start_normal_arrow=0;
+                counterfor4 = 0;
+                start_normal_arrow = 0;
             }
-            if(xfor4 == xd && yfor4== yd) {
-                deamon_health -= 15*k;
+            if(xfor4 == xd && yfor4 == yd) {
+                deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
-                mvprintw(3, 3, "You hit Deamon!  health: %d/5                                    ", deamon_health);
-                counterfor4=0;
-                start_normal_arrow=0;
+                mvprintw(3, 3, "You hit Demon!  health: %d/5                                     ", deamon_health);
+                counterfor4 = 0;
+                start_normal_arrow = 0;
             }
             if(xfor4 == xg && yfor4 == yg && (current_user->game_setting.game_level==1 || current_user->game_setting.game_level==2)) {
                 giant_health -= 15*k;
@@ -6339,66 +6792,87 @@ int game_f3(struct user *current_user , int level) {
                 start_normal_arrow=0;
             }
 
-            if(na==1) {
+            if(na == 1) {
                 xfor4--;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
-                    counterfor4=0;
-                    if(map[yfor4][xfor4+1]=='.')
-                    {
-                        map[yfor4][xfor4+1]='c';
-                    }
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4][xfor4+1] == '.') map[yfor4][xfor4+1] = 'c';
                 }
             }
-            else if(ns==1) {
+            else if(nx == 1) {
                 yfor4++;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
-                    counterfor4=0;
-                    if(map[yfor4-1][xfor4]=='.')
-                    {
-                        map[yfor4-1][xfor4]='c';
-                    }
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4-1][xfor4] == '.') map[yfor4-1][xfor4] = 'c';
                 }
             }
-            else if(nd==1) {
+            else if(nd == 1) {
                 xfor4++;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
-                    counterfor4=0;
-                    if(map[yfor4][xfor4-1]=='.')
-                    {
-                        map[yfor4][xfor4-1]='c';
-                    }
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4][xfor4-1] == '.') map[yfor4][xfor4-1] = 'c';
                 }
             }
-            else if(nw==1) {
+            else if(nw == 1) {
                 yfor4--;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
-                    counterfor4=0;
-                    if(map[yfor4+1][xfor4]=='.')
-                    {
-                        map[yfor4+1][xfor4]='c';
-                    }
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4+1][xfor4] == '.') map[yfor4+1][xfor4] = 'c';
+                }
+            }
+            else if(nq == 1) {
+                yfor4--; xfor4--;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4+1][xfor4+1] == '.') map[yfor4+1][xfor4+1] = 'c';
+                }
+            }
+            else if(ne == 1) {
+                yfor4--; xfor4++;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4+1][xfor4-1] == '.') map[yfor4+1][xfor4-1] = 'c';
+                }
+            }
+            else if(nz == 1) {
+                yfor4++; xfor4--;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4-1][xfor4+1] == '.') map[yfor4-1][xfor4+1] = 'c';
+                }
+            }
+            else if(nc == 1) {
+                yfor4++; xfor4++;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4-1][xfor4-1] == '.') map[yfor4-1][xfor4-1] = 'c';
                 }
             }
 
-            counterfor4++;
-            if(counterfor4 >= 5) {
-                if(map[yfor4][xfor4]=='.'){
-                    map[yfor4][xfor4]='c'; // c represents 1 normal arrow
+            if(start_normal_arrow != 0) {
+                counterfor4++;
+                if(counterfor4 >= 5) {
+                    if(map[yfor4][xfor4] == '.') {
+                        map[yfor4][xfor4] = 'c';  // c represents 1 normal arrow
+                    }
+                    start_normal_arrow = 0;
+                    counterfor4 = 0;
+                    nd = 0; na = 0; nw = 0; nx = 0;
+                    nq = 0; ne = 0; nz = 0; nc = 0;
                 }
-                start_normal_arrow = 0;
-                counterfor4 = 0;
-                nd=0; na=0; nw=0; ns=0;
-            }
-            if(map[yfor4][xfor4]=='.'){
-                mvaddch(yfor4, xfor4, '-');
+                if(map[yfor4][xfor4] == '.') {
+
+                    mvaddch(yfor4, xfor4, '-');
+                }
             }
 
             refresh();
         }
+
         ////////////
 
         ///////////Magic wand
-        if(in_use_weapon == 3 && previous_c == 'p') {
+        if(in_use_weapon == 3 && previous_c == 's') {
             start_magic_wand = 1;
             xfor3 = new_x;
             yfor3 = new_y;
@@ -6408,10 +6882,18 @@ int game_f3(struct user *current_user , int level) {
                     ma++; break;
                 case 'w':
                     mw++; break;
-                case 's':
-                    ms++; break;
+                case 'x':
+                    mx++; break;
                 case 'd':
                     md++; break;
+                case 'q':
+                    mq++; break;
+                case 'e':
+                    me++; break;
+                case 'z':
+                    mz++; break;
+                case 'c':
+                    mc++; break;
             }
 
             current_user->weapons.Magic_Wand_count--;
@@ -6423,26 +6905,26 @@ int game_f3(struct user *current_user , int level) {
         if(start_magic_wand == 1 && counterfor3 > 0) {
 
             if(xfor3 == new_x_f && yfor3 == new_y_f) {
-                fire_health -= 10*k;
+                fire_health -= 15*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
-                counterfor3=0;
-                start_magic_wand=0;
+                counterfor3 = 0;
+                start_magic_wand = 0;
             }
             if(xfor3 == new_x_s && yfor3 == new_y_s) {
-                snake_health -= 10*k;
+                snake_health -= 15*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
-                counterfor3=0;
-                snake_chase=0;
-                start_magic_wand=0;
+                counterfor3 = 0;
+                snake_chase = 0;
+                start_magic_wand = 0;
             }
             if(xfor3 == xd && yfor3 == yd) {
-                deamon_health -= 10*k;
+                deamon_health -= 15*k;
                 if(deamon_health <= 0) deamon_health = 0;
-                mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
-                counterfor3=0;
-                start_magic_wand=0;
+                mvprintw(3, 3, "You hit Deamon!  health: %d/5                                  ", deamon_health);
+                counterfor3 = 0;
+                start_magic_wand = 0;
             }
             if(xfor3 == xg && yfor3 == yg && (current_user->game_setting.game_level==1 || current_user->game_setting.game_level==2)) {
                 giant_health -= 10*k;
@@ -6451,63 +6933,88 @@ int game_f3(struct user *current_user , int level) {
                 counterfor3=0;
                 start_magic_wand=0;
             }
-
-            if(ma==1) {
+            if(ma == 1) {
                 xfor3--;
-                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
-                    counterfor3=0;
-                    if(map[yfor3][xfor3+1]=='.')
-                    {
-                        map[yfor3][xfor3+1]='x';
-                    }
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3][xfor3+1] == '.') map[yfor3][xfor3+1] = 'x';
                 }
             }
-            else if(ms==1) {
+            else if(mx == 1) {
                 yfor3++;
-                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
-                    counterfor3=0;
-                    if(map[yfor3-1][xfor3+1]=='.')
-                    {
-                        map[yfor3-1][xfor3+1]='x';
-                    }
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3-1][xfor3] == '.') map[yfor3-1][xfor3] = 'x';
                 }
             }
-            else if(md==1) {
+            else if(md == 1) {
                 xfor3++;
-                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
-                    counterfor3=0;
-                    if(map[yfor3][xfor3-1]=='.')
-                    {
-                        map[yfor3][xfor3-1]='x';
-                    }
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3][xfor3-1] == '.') map[yfor3][xfor3-1] = 'x';
                 }
             }
-            else if(mw==1) {
+            else if(mw == 1) {
                 yfor3--;
-                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
-                    counterfor3=0;
-                    if(map[yfor3+1][xfor3]=='.')
-                    {
-                        map[yfor3+1][xfor3]='x';
-                    }
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3+1][xfor3] == '.') map[yfor3+1][xfor3] = 'x';
                 }
             }
 
-            counterfor3++;
-            if(counterfor3 >= 5) {
-                if(map[yfor3][xfor3]=='.'){
-                    map[yfor3][xfor3]='x'; // x represents 1 magic wand
+            else if(mq == 1) {
+                yfor3--; xfor3--;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3+1][xfor3+1] == '.') map[yfor3+1][xfor3+1] = 'x';
                 }
-                start_magic_wand = 0;
-                counterfor3 = 0;
-                md=0; ma=0; mw=0; ms=0;
             }
-            if(map[yfor3][xfor3]=='.'){
-                mvaddch(yfor3, xfor3, '+');
+            else if(me == 1) {
+                yfor3--; xfor3++;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3+1][xfor3-1] == '.') map[yfor3+1][xfor3-1] = 'x';
+                }
             }
+            else if(mz == 1) {
+                yfor3++; xfor3--;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3-1][xfor3+1] == '.') map[yfor3-1][xfor3+1] = 'x';
+                }
+            }
+            else if(mc == 1) {
+                yfor3++; xfor3++;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3-1][xfor3-1] == '.') map[yfor3-1][xfor3-1] = 'x';
+                }
+            }
+
+            if(start_magic_wand != 0) {
+                counterfor3++;
+                if(counterfor3 >= 5) {
+                    if(map[yfor3][xfor3] == '.') {
+                        map[yfor3][xfor3] = 'x';
+                    }
+                    start_magic_wand = 0;
+                    counterfor3 = 0;
+                    md = 0; ma = 0; mw = 0; mx = 0;
+                    mq = 0; me = 0; mz = 0; mc = 0;
+                }
+                if(map[yfor3][xfor3] == '.') {
+                    char magic_char = '+';
+                    if((mq == 1 || mc == 1) || (me == 1 || mz == 1)) {
+                        magic_char = '*';
+                    }
+                    mvaddch(yfor3, xfor3, magic_char);
+                }
+            }
+
             mvprintw(2, 3, "                                                            ");
             refresh();
         }
+
         ////////////
 
 
@@ -6524,10 +7031,12 @@ int game_f3(struct user *current_user , int level) {
                     attroff(COLOR_PAIR(14));
                 }
                 else {
-                    mvprintw(3,3,"The door is locked. Press L to enter the pass !");
+                    mvprintw(3,3,"The door is locked. Press [t] to enter the pass !");
                 }
-                if(c=='l' && password_counter<=3){
-                    status=code(password);password_counter++;
+                if((c=='t' || c == 'T') && password_counter<=3){
+                    status=code(password);
+                    curs_set(0);
+                    password_counter++;
                 }
                 if(status==1 && password_counter<=3 ){
                     locked[cordinate_locked[0]][cordinate_locked[1]]=2;
@@ -6568,18 +7077,19 @@ int game_f3(struct user *current_user , int level) {
         }
 
         if(food>=10){
-            if(food4health_counter>=4){
-                if(current_user->spells.health_spell_counter>0){
+            if(current_user->spells.health_spell_counter>0){
+                current_user->spells.health_spell_counter-=1;
+                if(current_user->spells.health_spell_counter<0) current_user->spells.health_spell_counter=0;
+                if(food4health_counter>=4){
                     health+=2;
-                    current_user->spells.health_spell_counter-=1;
-                    if(current_user->spells.health_spell_counter<0) current_user->spells.health_spell_counter=0;
+                    food4health_counter=0;
                 }
-                else{
-                    health+=1;
-                }
-                if(health>10) health=10;
+            }
+            else if(current_user->spells.health_spell_counter==0 && food4health_counter>=4){
+                health+=1;
                 food4health_counter=0;
             }
+            if(health>10) health=10;
         }
 
         counter++;
@@ -7181,7 +7691,8 @@ int game_f4(struct user *current_user, int level) {
     while(1){
         int y5=rand()%max_y;
         int x5=rand()%max_x;
-        if(map[y5][x5]=='.' && room_number[y5][x5]==locked_room_num){
+        if(map[y5][x5]=='.' && room_number[y5][x5]==locked_room_num && locked[y5+1][x5]==0 &&
+           locked[y5][x5+1]==0 && locked[y5-1][x5]==0 && locked[y5][x5-1]==0){
             map[y5][x5]='=';
             break;
         }
@@ -7350,9 +7861,10 @@ int game_f4(struct user *current_user, int level) {
     int undeed_health = 30;
     int snake_chase=0;
     char previous_c;
-    int start_normal_arrow=0;  int xfor4, yfor4, counterfor4;int nw=0,na=0,ns=0,nd=0;
-    int start_magic_wand=0;  int xfor3, yfor3, counterfor3;int mw=0,ma=0,ms=0,md=0;
-    int start_dagger=0;  int xfor2, yfor2, counterfor2; int dw=0,da=0,ds=0,dd=0;
+    int start_normal_arrow=0;  int xfor4, yfor4, counterfor4;int nw=0,na=0,nx=0,nd=0 ,nq=0,ne=0,nz=0,nc=0;
+    int start_magic_wand=0;  int xfor3, yfor3, counterfor3;int mw=0,ma=0,mx=0,md=0 ,mq=0,me=0,mz=0,mc=0;
+    int start_dagger=0;  int xfor2, yfor2, counterfor2; int dw=0,da=0,dx1=0,dd=0 ,dq=0,de=0,dz=0,dc=0;
+
     int is_sth_here[max_y][max_x];
     for(int j=0;j<max_y;j++){
         for(int i=0;i<max_x;i++){
@@ -7366,6 +7878,7 @@ int game_f4(struct user *current_user, int level) {
 
 
     do {
+        check_and_replay_music();
         //print map
         for(int i = 0; i < max_y; i++) {
             for(int j = 0; j < max_x; j++) {
@@ -7520,7 +8033,7 @@ int game_f4(struct user *current_user, int level) {
         int new_y = y;
         int new_x = x;
 
-        if(c=='h'){
+        if(c=='p'){
             help();
         }
 
@@ -7530,7 +8043,7 @@ int game_f4(struct user *current_user, int level) {
 
         }
 
-        if(c ==101) { ///food window
+        if(c =='r') { ///food window
             clear();
             int p= food_bar(&food1, &health, &food);
             if(p==3){
@@ -7540,22 +8053,57 @@ int game_f4(struct user *current_user, int level) {
         }
         ///movement
 
-        if(current_user->spells.speed_spell_counter>0){
-            if (c == KEY_UP && y > 0) new_y-=2;
-            if (c == KEY_DOWN && y < max_y - 1) new_y+=2;
-            if (c == KEY_RIGHT && x < max_x - 1) new_x+=2;
-            if (c == KEY_LEFT && x > 0) new_x-=2;
-            current_user->spells.speed_spell_counter-=1;
-            if(current_user->spells.speed_spell_counter==0) current_user->spells.speed_spell_counter=0;
-        }
-        else{
-            if (c == KEY_UP && y > 0) new_y--;
-            if (c == KEY_DOWN && y < max_y - 1) new_y++;
-            if (c == KEY_RIGHT && x < max_x - 1) new_x++;
-            if (c == KEY_LEFT && x > 0) new_x--;
+        if(current_user->spells.speed_spell_counter > 0) {
+            if (c == 'k' && y < max_y - 1) new_y += 2;  // Down
+            if (c == 'j' && y > 0) new_y -= 2;          // Up
+            if (c == 'l' && x < max_x - 1) new_x += 2;  // Right
+            if (c == 'h' && x > 0) new_x -= 2;          // Left
 
+            if (c == 'y' && y > 0 && x > 0) {               // Up-Left
+                new_y -= 2;
+                new_x -= 2;
+            }
+            if (c == 'u' && y > 0 && x < max_x - 1) {       // Up-Right
+                new_y -= 2;
+                new_x += 2;
+            }
+            if (c == 'b' && y < max_y - 1 && x > 0) {       // Down-Left
+                new_y += 2;
+                new_x -= 2;
+            }
+            if (c == 'n' && y < max_y - 1 && x < max_x - 1) { // Down-Right
+                new_y += 2;
+                new_x += 2;
+            }
+
+            current_user->spells.speed_spell_counter -= 1;
+            if(current_user->spells.speed_spell_counter == 0)
+                current_user->spells.speed_spell_counter = 0;
         }
-        mvprintw(2,max_x-30,"[h] to open help menu");
+        else {
+            if (c == 'k' && y < max_y - 1) new_y++;
+            if (c == 'j' && y > 0) new_y--;
+            if (c == 'l' && x < max_x - 1) new_x++;
+            if (c == 'h' && x > 0) new_x--;
+
+            if (c == 'y' && y > 0 && x > 0) {
+                new_y--;
+                new_x--;
+            }
+            if (c == 'u' && y > 0 && x < max_x - 1) {
+                new_y--;
+                new_x++;
+            }
+            if (c == 'b' && y < max_y - 1 && x > 0) {
+                new_y++;
+                new_x--;
+            }
+            if (c == 'n' && y < max_y - 1 && x < max_x - 1) {
+                new_y++;
+                new_x++;
+            }
+        }
+        mvprintw(2,max_x-30,"[p] to open help menu");
 
 
         if(current_user->spells.damage_spell_counter>0){
@@ -7891,13 +8439,13 @@ int game_f4(struct user *current_user, int level) {
             }
         }
         else if(current_user->game_setting.game_level==1){
-            if(counter==25){
+            if(counter==28){
                 health--;
                 counter=0;
             }
         }
         else if(current_user->game_setting.game_level==2){
-            if(counter==15){
+            if(counter==18){
                 health--;
                 counter=0;
             }
@@ -7920,6 +8468,7 @@ int game_f4(struct user *current_user, int level) {
         }
 
         if(health==0){
+            stop_background_music();
             current_user->new_golds=current_user->new_golds+total_black_gold+total_yellow_gold;
             current_user->total_gold=current_user->total_gold+ current_user->new_golds;
             return 0;
@@ -7936,11 +8485,11 @@ int game_f4(struct user *current_user, int level) {
         int dy = yd - new_y;
         fx = new_x_f -  new_x;
         fy = new_y_f - new_y;
-        gx = new_x_g -  new_x;
+        gx = new_x_g - new_x;
         gy = new_y_g - new_y;
         int sx = new_x_s -  new_x;
         int sy = new_y_s - new_y;
-        if(c=='p' || c=='P') {
+        if(c=='s' || c=='S') {
             if (in_use_weapon == 1) {
                 if ((abs(dy) == 1 || abs(dy) == -1 || abs(dy) == 0) &&
                     (abs(dx) == 1 || abs(dx) == -1 || abs(dx) == 0)) {
@@ -8023,20 +8572,28 @@ int game_f4(struct user *current_user, int level) {
         }
 
         ///////////dagger
-        if(in_use_weapon == 2 && previous_c == 'p') {
+        if(in_use_weapon == 2 && previous_c == 's') {
             start_dagger = 1;
             xfor2 = new_x;
             yfor2 = new_y;
             counterfor2 = 1;
             switch (c) {
-                case 'a':
-                    da++; break;
-                case 'w':
+                case 'w':  // Up
                     dw++; break;
-                case 's':
-                    ds++; break;
-                case 'd':
+                case 'x':  // Down
+                    dx1++; break;
+                case 'a':  // Left
+                    da++; break;
+                case 'd':  // Right
                     dd++; break;
+                case 'q':  // Up-Left
+                    dq++; break;
+                case 'e':  // Up-Right
+                    de++; break;
+                case 'z':  // Down-Left
+                    dz++; break;
+                case 'c':  // Down-Right
+                    dc++; break;
             }
 
             current_user->weapons.Dagger_count--;
@@ -8051,104 +8608,140 @@ int game_f4(struct user *current_user, int level) {
                 fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
-                counterfor2=0;
-                start_dagger=0;
-            }
-            if(xfor2 == new_x_g && yfor2 == new_y_g) {
-                giant_health -= 10*k;
-                if(giant_health <= 0) giant_health = 0;
-                mvprintw(3, 3, "You hit Gaint!  health: %d/15                                    ", giant_health);
-                counterfor2=0;
-                start_dagger=0;
+                counterfor2 = 0;
+                start_dagger = 0;
             }
             if(xfor2 == new_x_s && yfor2 == new_y_s) {
                 snake_health -= 10*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
-                counterfor2=0;
-                start_dagger=0;
+                counterfor2 = 0;
+                start_dagger = 0;
             }
             if(xfor2 == xd && yfor2 == yd) {
                 deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
-                mvprintw(3, 3, "You hit Deamon!  health: %d/5                                    ", deamon_health);
+                mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
+                counterfor2 = 0;
+                start_dagger = 0;
+            }
+
+            if(xfor2 == xg && yfor2 == yg ) {
+                giant_health -= 10*k;
+                if(giant_health <= 0) giant_health = 0;
+                mvprintw(3, 3, "You hit Giant!  health: %d/15                               ", giant_health);
                 counterfor2=0;
                 start_dagger=0;
             }
 
-            if(da==1) {
+
+            if(da == 1) {  // Left
                 xfor2--;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
-                    counterfor2=0;
-                    if(map[yfor2][xfor2+1]=='.')
-                    {
-                        map[yfor2][xfor2+1]='z';
-                    }
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2][xfor2+1] == '.') map[yfor2][xfor2+1] = 'z';
                 }
             }
-            else if(ds==1) {
-                yfor2++;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
-                    counterfor2=0;
-                    if(map[yfor2-1][xfor2]=='.')
-                    {
-                        map[yfor2-1][xfor2]='z';
-                    }
-                }
-            }
-            else if(dd==1) {
+            else if(dd == 1) {  // Right
                 xfor2++;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
-                    counterfor2=0;
-                    if(map[yfor2][xfor2-1]=='.')
-                    {
-                        map[yfor2][xfor2-1]='z';
-                    }
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_') {
+                    counterfor2 = 0;
+                    if(map[yfor2][xfor2-1] == '.') map[yfor2][xfor2-1] = 'z';
                 }
             }
-            else if(dw==1) {
+            else if(dw == 1) {  // Up
                 yfor2--;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
-                    counterfor2=0;
-                    if(map[yfor2+1][xfor2]=='.')
-                    {
-                        map[yfor2+1][xfor2]='z';
-                    }
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_') {
+                    counterfor2 = 0;
+                    if(map[yfor2+1][xfor2] == '.') map[yfor2+1][xfor2] = 'z';
+                }
+            }
+            else if(dx1 == 1) {  // Down
+                yfor2++;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_') {
+                    counterfor2 = 0;
+                    if(map[yfor2-1][xfor2] == '.') map[yfor2-1][xfor2] = 'z';
+                }
+            }
+            else if(dq == 1) {  // Up-Left
+                xfor2--;
+                yfor2--;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2+1][xfor2+1] == '.') map[yfor2+1][xfor2+1] = 'z';
+                }
+            }
+            else if(de == 1) {  // Up-Right
+                xfor2++;
+                yfor2--;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2+1][xfor2-1] == '.') map[yfor2+1][xfor2-1] = 'z';
+                }
+            }
+            else if(dz == 1) {  // Down-Left
+                xfor2--;
+                yfor2++;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2-1][xfor2+1] == '.') map[yfor2-1][xfor2+1] = 'z';
+                }
+            }
+            else if(dc == 1) {  // Down-Right
+                xfor2++;
+                yfor2++;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2-1][xfor2-1] == '.') map[yfor2-1][xfor2-1] = 'z';
                 }
             }
 
-            counterfor2++;
-            if(counterfor2 >= 5) {
-                if(map[yfor2][xfor2]=='.'){
-                    map[yfor2][xfor2]='z'; // z represents 1 dagger
+            if(start_dagger!=0){
+                counterfor2++;
+                if(counterfor2 >= 5) {
+                    if(map[yfor2][xfor2] == '.') {
+                        map[yfor2][xfor2] = 'z';  // z represents 1 dagger
+                    }
+                    start_dagger = 0;
+                    counterfor2 = 0;
+                    dd = 0; da = 0; dw = 0; dx1 = 0;
+                    dq = 0; de = 0; dz = 0; dc = 0;
                 }
-                start_dagger = 0;
-                counterfor2 = 0;
-                dd=0; da=0; dw=0; ds=0;
-            }
-            if(map[yfor2][xfor2]=='.'){
-                mvaddch(yfor2, xfor2, '*');
+
+                if(map[yfor2][xfor2] == '.') {
+                    mvaddch(yfor2, xfor2, '*');
+                }
+
             }
             refresh();
         }
+
         ////////////
 
 
         ///////////normal arrow
-        if(in_use_weapon == 4 && previous_c == 'p') {
+        if(in_use_weapon == 4 && previous_c == 's') {
             start_normal_arrow = 1;
             xfor4 = new_x;
             yfor4 = new_y;
             counterfor4 = 1;
             switch (c) {
-                case 'a':
+                case 'a':  // Left
                     na++; break;
-                case 'w':
+                case 'w':  // Up
                     nw++; break;
-                case 's':
-                    ns++; break;
-                case 'd':
+                case 'x':  // Down
+                    nx++; break;
+                case 'd':  // Right
                     nd++; break;
+                case 'q':  // Up-Left
+                    nq++; break;
+                case 'e':  // Up-Right
+                    ne++; break;
+                case 'z':  // Down-Left
+                    nz++; break;
+                case 'c':  // Down-Right
+                    nc++; break;
             }
 
             current_user->weapons.Normal_Arrow_count--;
@@ -8163,93 +8756,113 @@ int game_f4(struct user *current_user, int level) {
                 fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
-                counterfor4=0;
-                start_normal_arrow=0;
+                counterfor4 = 0;
+                start_normal_arrow = 0;
             }
-            if(xfor4 == new_x_s && yfor2 == new_y_s) {
+            if(xfor4 == new_x_s && yfor4 == new_y_s) {
                 snake_health -= 10*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
-                counterfor4=0;
-                start_normal_arrow=0;
+                counterfor4 = 0;
+                start_normal_arrow = 0;
             }
-
-            if(xfor2 == new_x_g && yfor2 == new_y_g) {
+            if(xfor4 == new_x_g && yfor4 == new_y_g) {
                 giant_health -= 10*k;
                 if(giant_health <= 0) giant_health = 0;
-                mvprintw(3, 3, "You hit Gaint!  health: %d/15                                    ", giant_health);
-                counterfor4=0;
-                start_normal_arrow=0;
+                mvprintw(3, 3, "You hit Giant!  health: %d/15                                    ", giant_health);
+                counterfor4 = 0;
+                start_normal_arrow = 0;
             }
-
-            if(xfor4 == xd && yfor4== yd) {
+            if(xfor4 == xd && yfor4 == yd) {
                 deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
-                mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
-                counterfor4=0;
-                start_normal_arrow=0;
-            }
-
-            if(na==1) {
-                xfor4--;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
-                    counterfor4=0;
-                    if(map[yfor4][xfor4+1]=='.')
-                    {
-                        map[yfor4][xfor4+1]='c';
-                    }
-                }
-            }
-            else if(ns==1) {
-                yfor4++;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
-                    counterfor4=0;
-                    if(map[yfor4-1][xfor4]=='.')
-                    {
-                        map[yfor4-1][xfor4]='c';
-                    }
-                }
-            }
-            else if(nd==1) {
-                xfor4++;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
-                    counterfor4=0;
-                    if(map[yfor4][xfor4-1]=='.')
-                    {
-                        map[yfor4][xfor4-1]='c';
-                    }
-                }
-            }
-            else if(nw==1) {
-                yfor4--;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
-                    counterfor4=0;
-                    if(map[yfor4+1][xfor4]=='.')
-                    {
-                        map[yfor4+1][xfor4]='c';
-                    }
-                }
-            }
-
-            counterfor4++;
-            if(counterfor4 >= 5) {
-                if(map[yfor4][xfor4]=='.'){
-                    map[yfor4][xfor4]='c'; // c represents 1 normal arrow
-                }
-                start_normal_arrow = 0;
+                mvprintw(3, 3, "You hit Demon!  health: %d/5                                     ", deamon_health);
                 counterfor4 = 0;
-                nd=0; na=0; nw=0; ns=0;
+                start_normal_arrow = 0;
             }
-            if(map[yfor4][xfor4]=='.'){
-                mvaddch(yfor4, xfor4, '-');
+
+            if(na == 1) {  // Left
+                xfor4--;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4][xfor4+1] == '.') map[yfor4][xfor4+1] = 'c';
+                }
+            }
+            else if(nx == 1) {  // Down
+                yfor4++;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4-1][xfor4] == '.') map[yfor4-1][xfor4] = 'c';
+                }
+            }
+            else if(nd == 1) {  // Right
+                xfor4++;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4][xfor4-1] == '.') map[yfor4][xfor4-1] = 'c';
+                }
+            }
+            else if(nw == 1) {  // Up
+                yfor4--;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4+1][xfor4] == '.') map[yfor4+1][xfor4] = 'c';
+                }
+            }
+                // New diagonal movements
+            else if(nq == 1) {  // Up-Left
+                yfor4--; xfor4--;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4+1][xfor4+1] == '.') map[yfor4+1][xfor4+1] = 'c';
+                }
+            }
+            else if(ne == 1) {  // Up-Right
+                yfor4--; xfor4++;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4+1][xfor4-1] == '.') map[yfor4+1][xfor4-1] = 'c';
+                }
+            }
+            else if(nz == 1) {  // Down-Left
+                yfor4++; xfor4--;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4-1][xfor4+1] == '.') map[yfor4-1][xfor4+1] = 'c';
+                }
+            }
+            else if(nc == 1) {  // Down-Right
+                yfor4++; xfor4++;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4-1][xfor4-1] == '.') map[yfor4-1][xfor4-1] = 'c';
+                }
+            }
+
+            if(start_normal_arrow != 0) {
+                counterfor4++;
+                if(counterfor4 >= 5) {
+                    if(map[yfor4][xfor4] == '.') {
+                        map[yfor4][xfor4] = 'c';  // c represents 1 normal arrow
+                    }
+                    start_normal_arrow = 0;
+                    counterfor4 = 0;
+                    nd = 0; na = 0; nw = 0; nx = 0;
+                    nq = 0; ne = 0; nz = 0; nc = 0;
+                }
+                if(map[yfor4][xfor4] == '.') {
+
+                    mvaddch(yfor4, xfor4, '-');
+                }
             }
 
             refresh();
         }
+
         ////////////
 
         ///////////Magic wand
-        if(in_use_weapon == 3 && previous_c == 'p') {
+        if(in_use_weapon == 3 && previous_c == 's') {
             start_magic_wand = 1;
             xfor3 = new_x;
             yfor3 = new_y;
@@ -8259,10 +8872,18 @@ int game_f4(struct user *current_user, int level) {
                     ma++; break;
                 case 'w':
                     mw++; break;
-                case 's':
-                    ms++; break;
+                case 'x':
+                    mx++; break;
                 case 'd':
                     md++; break;
+                case 'q':
+                    mq++; break;
+                case 'e':
+                    me++; break;
+                case 'z':
+                    mz++; break;
+                case 'c':
+                    mc++; break;
             }
 
             current_user->weapons.Magic_Wand_count--;
@@ -8277,23 +8898,23 @@ int game_f4(struct user *current_user, int level) {
                 fire_health -= 15*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
-                counterfor3=0;
-                start_magic_wand=0;
+                counterfor3 = 0;
+                start_magic_wand = 0;
             }
             if(xfor3 == new_x_s && yfor3 == new_y_s) {
                 snake_health -= 15*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
-                counterfor3=0;
-                snake_chase=0;
-                start_magic_wand=0;
+                counterfor3 = 0;
+                snake_chase = 0;
+                start_magic_wand = 0;
             }
             if(xfor3 == xd && yfor3 == yd) {
                 deamon_health -= 15*k;
                 if(deamon_health <= 0) deamon_health = 0;
-                mvprintw(3, 3, "You hit Deamon!  health: %d/5                                     ", deamon_health);
-                counterfor3=0;
-                start_magic_wand=0;
+                mvprintw(3, 3, "You hit Deamon!  health: %d/5                                  ", deamon_health);
+                counterfor3 = 0;
+                start_magic_wand = 0;
             }
             if(xfor2 == new_x_g && yfor2 == new_y_g) {
                 giant_health -= 15*k;
@@ -8303,62 +8924,88 @@ int game_f4(struct user *current_user, int level) {
                 start_magic_wand=0;
             }
 
-            if(ma==1) {
+            if(ma == 1) {
                 xfor3--;
-                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
-                    counterfor3=0;
-                    if(map[yfor3][xfor3+1]=='.')
-                    {
-                        map[yfor3][xfor3+1]='x';
-                    }
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3][xfor3+1] == '.') map[yfor3][xfor3+1] = 'x';
                 }
             }
-            else if(ms==1) {
+            else if(mx == 1) {
                 yfor3++;
-                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
-                    counterfor3=0;
-                    if(map[yfor3-1][xfor3+1]=='.')
-                    {
-                        map[yfor3-1][xfor3+1]='x';
-                    }
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3-1][xfor3] == '.') map[yfor3-1][xfor3] = 'x';
                 }
             }
-            else if(md==1) {
+            else if(md == 1) {
                 xfor3++;
-                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
-                    counterfor3=0;
-                    if(map[yfor3][xfor3-1]=='.')
-                    {
-                        map[yfor3][xfor3-1]='x';
-                    }
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3][xfor3-1] == '.') map[yfor3][xfor3-1] = 'x';
                 }
             }
-            else if(mw==1) {
+            else if(mw == 1) {
                 yfor3--;
-                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
-                    counterfor3=0;
-                    if(map[yfor3+1][xfor3]=='.')
-                    {
-                        map[yfor3+1][xfor3]='x';
-                    }
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3+1][xfor3] == '.') map[yfor3+1][xfor3] = 'x';
                 }
             }
 
-            counterfor3++;
-            if(counterfor3 >= 5) {
-                if(map[yfor3][xfor3]=='.'){
-                    map[yfor3][xfor3]='x'; // x represents 1 magic wand
+            else if(mq == 1) {
+                yfor3--; xfor3--;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3+1][xfor3+1] == '.') map[yfor3+1][xfor3+1] = 'x';
                 }
-                start_magic_wand = 0;
-                counterfor3 = 0;
-                md=0; ma=0; mw=0; ms=0;
             }
-            if(map[yfor3][xfor3]=='.'){
-                mvaddch(yfor3, xfor3, '+');
+            else if(me == 1) {
+                yfor3--; xfor3++;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3+1][xfor3-1] == '.') map[yfor3+1][xfor3-1] = 'x';
+                }
             }
+            else if(mz == 1) {
+                yfor3++; xfor3--;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3-1][xfor3+1] == '.') map[yfor3-1][xfor3+1] = 'x';
+                }
+            }
+            else if(mc == 1) {
+                yfor3++; xfor3++;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3-1][xfor3-1] == '.') map[yfor3-1][xfor3-1] = 'x';
+                }
+            }
+
+            if(start_magic_wand != 0) {
+                counterfor3++;
+                if(counterfor3 >= 5) {
+                    if(map[yfor3][xfor3] == '.') {
+                        map[yfor3][xfor3] = 'x';
+                    }
+                    start_magic_wand = 0;
+                    counterfor3 = 0;
+                    md = 0; ma = 0; mw = 0; mx = 0;
+                    mq = 0; me = 0; mz = 0; mc = 0;
+                }
+                if(map[yfor3][xfor3] == '.') {
+                    char magic_char = '+';
+                    if((mq == 1 || mc == 1) || (me == 1 || mz == 1)) {
+                        magic_char = '*';
+                    }
+                    mvaddch(yfor3, xfor3, magic_char);
+                }
+            }
+
             mvprintw(2, 3, "                                                            ");
             refresh();
         }
+
         ////////////
 
 
@@ -8374,10 +9021,12 @@ int game_f4(struct user *current_user, int level) {
                     attroff(COLOR_PAIR(14));
                 }
                 else {
-                    mvprintw(3,3,"The door is locked. Press L to enter the pass !");
+                    mvprintw(3,3,"The door is locked. Press [t] to enter the pass !");
                 }
-                if(c=='l' && password_counter<=3){
-                    status=code(password);password_counter++;
+                if((c=='t' || c == 'T') && password_counter<=3){
+                    status=code(password);
+                    curs_set(0);
+                    password_counter++;
                 }
                 if(status==1 && password_counter<=3 ){
                     locked[cordinate_locked[0]][cordinate_locked[1]]=2;
@@ -8417,18 +9066,19 @@ int game_f4(struct user *current_user, int level) {
             strcpy(password,"0");
         }
         if(food>=10){
-            if(food4health_counter>=4){
-                if(current_user->spells.health_spell_counter>0){
+            if(current_user->spells.health_spell_counter>0){
+                current_user->spells.health_spell_counter-=1;
+                if(current_user->spells.health_spell_counter<0) current_user->spells.health_spell_counter=0;
+                if(food4health_counter>=4){
                     health+=2;
-                    current_user->spells.health_spell_counter-=1;
-                    if(current_user->spells.health_spell_counter<0) current_user->spells.health_spell_counter=0;
+                    food4health_counter=0;
                 }
-                else{
-                    health+=1;
-                }
-                if(health>10) health=10;
+            }
+            else if(current_user->spells.health_spell_counter==0 && food4health_counter>=4){
+                health+=1;
                 food4health_counter=0;
             }
+            if(health>10) health=10;
         }
 
         mvprintw(max_y-2,60,"floor : 4");
@@ -8645,10 +9295,10 @@ int treasure_room(struct user *current_user , int level){
         num_traps= 10+ (rand() % 3);
     }
     else if(current_user->game_setting.game_level==1){
-        num_traps= 12 + (rand() % 5);
+        num_traps= 15 + (rand() % 5);
     }
     else if(current_user->game_setting.game_level==2){
-        num_traps= 14 + (rand() % 7);
+        num_traps= 20 + (rand() % 7);
     }
     int nt=0 ,ty ,tx;
     while(nt<num_traps){
@@ -8948,9 +9598,9 @@ int treasure_room(struct user *current_user , int level){
     int undeed_health = 30;
     int snake_chase=0;
     char previous_c;
-    int start_normal_arrow=0;  int xfor4, yfor4, counterfor4;int nw=0,na=0,ns=0,nd=0;
-    int start_magic_wand=0;  int xfor3, yfor3, counterfor3;int mw=0,ma=0,ms=0,md=0;
-    int start_dagger=0;  int xfor2, yfor2, counterfor2; int dw=0,da=0,ds=0,dd=0;
+    int start_normal_arrow=0;  int xfor4, yfor4, counterfor4;int nw=0,na=0,nx=0,nd=0 ,nq=0,ne=0,nz=0,nc=0;
+    int start_magic_wand=0;  int xfor3, yfor3, counterfor3;int mw=0,ma=0,mx=0,md=0 ,mq=0,me=0,mz=0,mc=0;
+    int start_dagger=0;  int xfor2, yfor2, counterfor2; int dw=0,da=0,dx1=0,dd=0 ,dq=0,de=0,dz=0,dc=0;
     int is_sth_here[max_y][max_x];
     for(int j=0;j<max_y;j++){
         for(int i=0;i<max_x;i++){
@@ -8965,6 +9615,7 @@ int treasure_room(struct user *current_user , int level){
 
 
     do {
+        check_and_replay_music();
         //print map
         for(int i = 0; i < max_y; i++) {
             for(int j = 0; j < max_x; j++) {
@@ -9068,7 +9719,7 @@ int treasure_room(struct user *current_user , int level){
         int new_y = y;
         int new_x = x;
 
-        if(c=='h'){
+        if(c=='p'){
             help();
         }
 
@@ -9078,7 +9729,7 @@ int treasure_room(struct user *current_user , int level){
 
         }
 
-        if(c ==101) { ///food window
+        if(c =='r') { ///food window
             clear();
             int p= food_bar(&food1, &health, &food);
             if(p==3){
@@ -9086,24 +9737,59 @@ int treasure_room(struct user *current_user , int level){
             }
             c = getch();
         }
-        mvprintw(2,max_x-30,"[h] to open help menu");
+        mvprintw(2,max_x-30,"[p] to open help menu");
 
         ///movement
 
-        if(current_user->spells.speed_spell_counter>0){
-            if (c == KEY_UP && y > 0) new_y-=2;
-            if (c == KEY_DOWN && y < max_y - 1) new_y+=2;
-            if (c == KEY_RIGHT && x < max_x - 1) new_x+=2;
-            if (c == KEY_LEFT && x > 0) new_x-=2;
-            current_user->spells.speed_spell_counter-=1;
-            if(current_user->spells.speed_spell_counter==0) current_user->spells.speed_spell_counter=0;
-        }
-        else{
-            if (c == KEY_UP && y > 0) new_y--;
-            if (c == KEY_DOWN && y < max_y - 1) new_y++;
-            if (c == KEY_RIGHT && x < max_x - 1) new_x++;
-            if (c == KEY_LEFT && x > 0) new_x--;
+        if(current_user->spells.speed_spell_counter > 0) {
+            if (c == 'k' && y < max_y - 1) new_y += 2;  // Down
+            if (c == 'j' && y > 0) new_y -= 2;          // Up
+            if (c == 'l' && x < max_x - 1) new_x += 2;  // Right
+            if (c == 'h' && x > 0) new_x -= 2;          // Left
 
+            if (c == 'y' && y > 0 && x > 0) {               // Up-Left
+                new_y -= 2;
+                new_x -= 2;
+            }
+            if (c == 'u' && y > 0 && x < max_x - 1) {       // Up-Right
+                new_y -= 2;
+                new_x += 2;
+            }
+            if (c == 'b' && y < max_y - 1 && x > 0) {       // Down-Left
+                new_y += 2;
+                new_x -= 2;
+            }
+            if (c == 'n' && y < max_y - 1 && x < max_x - 1) { // Down-Right
+                new_y += 2;
+                new_x += 2;
+            }
+
+            current_user->spells.speed_spell_counter -= 1;
+            if(current_user->spells.speed_spell_counter == 0)
+                current_user->spells.speed_spell_counter = 0;
+        }
+        else {
+            if (c == 'k' && y < max_y - 1) new_y++;
+            if (c == 'j' && y > 0) new_y--;
+            if (c == 'l' && x < max_x - 1) new_x++;
+            if (c == 'h' && x > 0) new_x--;
+
+            if (c == 'y' && y > 0 && x > 0) {
+                new_y--;
+                new_x--;
+            }
+            if (c == 'u' && y > 0 && x < max_x - 1) {
+                new_y--;
+                new_x++;
+            }
+            if (c == 'b' && y < max_y - 1 && x > 0) {
+                new_y++;
+                new_x--;
+            }
+            if (c == 'n' && y < max_y - 1 && x < max_x - 1) {
+                new_y++;
+                new_x++;
+            }
         }
 
         if(current_user->spells.damage_spell_counter>0){
@@ -9270,7 +9956,6 @@ int treasure_room(struct user *current_user , int level){
         }
 
         ////////--------------------------
-
 
         //fire breathing monster//////////////
         int new_x_f , new_y_f;
@@ -9471,13 +10156,13 @@ int treasure_room(struct user *current_user , int level){
             }
         }
         else if(current_user->game_setting.game_level==1){
-            if(counter==25){
+            if(counter==28){
                 health--;
                 counter=0;
             }
         }
         else if(current_user->game_setting.game_level==2){
-            if(counter==15){
+            if(counter==18){
                 health--;
                 counter=0;
             }
@@ -9500,6 +10185,7 @@ int treasure_room(struct user *current_user , int level){
         }
 
         if(health==0){
+            stop_background_music();
             current_user->new_golds+=total_black_gold+total_yellow_gold;
             current_user->total_gold+=current_user->new_golds;
             return 0;
@@ -9517,7 +10203,7 @@ int treasure_room(struct user *current_user , int level){
         ux = new_x_u - new_x;
         uy = new_y_u - new_y;
 
-        if(c=='p' || c=='P') {
+        if(c=='s' || c=='S') {
             if (in_use_weapon == 1) {
                 if ((abs(dy) == 1 || abs(dy) == -1 || abs(dy) == 0) &&
                     (abs(dx) == 1 || abs(dx) == -1 || abs(dx) == 0)) {
@@ -9621,20 +10307,28 @@ int treasure_room(struct user *current_user , int level){
         }
 
         ///////////dagger
-        if(in_use_weapon == 2 && previous_c == 'p') {
+        if(in_use_weapon == 2 && previous_c == 's') {
             start_dagger = 1;
             xfor2 = new_x;
             yfor2 = new_y;
             counterfor2 = 1;
             switch (c) {
-                case 'a':
-                    da++; break;
-                case 'w':
+                case 'w':  // Up
                     dw++; break;
-                case 's':
-                    ds++; break;
-                case 'd':
+                case 'x':  // Down
+                    dx1++; break;
+                case 'a':  // Left
+                    da++; break;
+                case 'd':  // Right
                     dd++; break;
+                case 'q':  // Up-Left
+                    dq++; break;
+                case 'e':  // Up-Right
+                    de++; break;
+                case 'z':  // Down-Left
+                    dz++; break;
+                case 'c':  // Down-Right
+                    dc++; break;
             }
 
             current_user->weapons.Dagger_count--;
@@ -9649,34 +10343,34 @@ int treasure_room(struct user *current_user , int level){
                 fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
-                counterfor2=0;
-                start_dagger=0;
+                counterfor2 = 0;
+                start_dagger = 0;
             }
             if(xfor2 == new_x_s && yfor2 == new_y_s) {
                 snake_health -= 10*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
-                counterfor2=0;
-                start_dagger=0;
+                counterfor2 = 0;
+                start_dagger = 0;
             }
             if(xfor2 == xd && yfor2 == yd) {
                 deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
                 mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
-                counterfor2=0;
-                start_dagger=0;
+                counterfor2 = 0;
+                start_dagger = 0;
             }
 
-            if(xfor2 == new_x_g && yfor2 == new_y_g) {
+            if(xfor2 == xg && yfor2 == yg ) {
                 giant_health -= 10*k;
-                if(deamon_health <= 0) deamon_health = 0;
-                mvprintw(3, 3, "You hit Giant!  health: %d/15                           ", giant_health);
+                if(giant_health <= 0) giant_health = 0;
+                mvprintw(3, 3, "You hit Giant!  health: %d/15                               ", giant_health);
                 counterfor2=0;
                 start_dagger=0;
             }
 
-            if ((abs(uy) == 1 || abs(uy) == -1 || abs(uy) == 0) &&
-                (abs(ux) == 1 || abs(ux) == -1 || abs(ux) == 0)) {
+
+            if (xfor2 == new_x_u && yfor2 == new_y_u) {
                 undeed_health -= 10*k;
                 if (undeed_health <= 0) {
                     undeed_health = 0;
@@ -9687,79 +10381,115 @@ int treasure_room(struct user *current_user , int level){
 
             }
 
-            if(da==1) {
+
+            if(da == 1) {
                 xfor2--;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
-                    counterfor2=0;
-                    if(map[yfor2][xfor2+1]=='.')
-                    {
-                        map[yfor2][xfor2+1]='z';
-                    }
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2][xfor2+1] == '.') map[yfor2][xfor2+1] = 'z';
                 }
             }
-            else if(ds==1) {
-                yfor2++;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
-                    counterfor2=0;
-                    if(map[yfor2-1][xfor2]=='.')
-                    {
-                        map[yfor2-1][xfor2]='z';
-                    }
-                }
-            }
-            else if(dd==1) {
+            else if(dd == 1) {
                 xfor2++;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
-                    counterfor2=0;
-                    if(map[yfor2][xfor2-1]=='.')
-                    {
-                        map[yfor2][xfor2-1]='z';
-                    }
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_') {
+                    counterfor2 = 0;
+                    if(map[yfor2][xfor2-1] == '.') map[yfor2][xfor2-1] = 'z';
                 }
             }
-            else if(dw==1) {
+            else if(dw == 1) {
                 yfor2--;
-                if(map[yfor2][xfor2]=='|' || map[yfor2][xfor2]=='_'){
-                    counterfor2=0;
-                    if(map[yfor2+1][xfor2]=='.')
-                    {
-                        map[yfor2+1][xfor2]='z';
-                    }
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_') {
+                    counterfor2 = 0;
+                    if(map[yfor2+1][xfor2] == '.') map[yfor2+1][xfor2] = 'z';
+                }
+            }
+            else if(dx1 == 1) {
+                yfor2++;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_') {
+                    counterfor2 = 0;
+                    if(map[yfor2-1][xfor2] == '.') map[yfor2-1][xfor2] = 'z';
+                }
+            }
+            else if(dq == 1) {
+                xfor2--;
+                yfor2--;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2+1][xfor2+1] == '.') map[yfor2+1][xfor2+1] = 'z';
+                }
+            }
+            else if(de == 1) {
+                xfor2++;
+                yfor2--;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2+1][xfor2-1] == '.') map[yfor2+1][xfor2-1] = 'z';
+                }
+            }
+            else if(dz == 1) {
+                xfor2--;
+                yfor2++;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2-1][xfor2+1] == '.') map[yfor2-1][xfor2+1] = 'z';
+                }
+            }
+            else if(dc == 1) {
+                xfor2++;
+                yfor2++;
+                if(map[yfor2][xfor2] == '|' || map[yfor2][xfor2] == '_' || map[yfor2][xfor2] == '-') {
+                    counterfor2 = 0;
+                    if(map[yfor2-1][xfor2-1] == '.') map[yfor2-1][xfor2-1] = 'z';
                 }
             }
 
-            counterfor2++;
-            if(counterfor2 >= 5) {
-                if(map[yfor2][xfor2]=='.'){
-                    map[yfor2][xfor2]='z'; // z represents 1 dagger
+            if(start_dagger!=0){
+                counterfor2++;
+                if(counterfor2 >= 5) {
+                    if(map[yfor2][xfor2] == '.') {
+                        map[yfor2][xfor2] = 'z';  // z represents 1 dagger
+                    }
+                    start_dagger = 0;
+                    counterfor2 = 0;
+                    dd = 0; da = 0; dw = 0; dx1 = 0;
+                    dq = 0; de = 0; dz = 0; dc = 0;
                 }
-                start_dagger = 0;
-                counterfor2 = 0;
-                dd=0; da=0; dw=0; ds=0;
-            }
-            if(map[yfor2][xfor2]=='.'){
-                mvaddch(yfor2, xfor2, '*');
+
+                if(map[yfor2][xfor2] == '.') {
+                    mvaddch(yfor2, xfor2, '*');
+                }
+
             }
             refresh();
         }
+
+
         ////////////
 
 
         ///////////normal arrow
-        if(in_use_weapon == 4 && previous_c == 'p') {
+        if(in_use_weapon == 4 && previous_c == 's') {
             start_normal_arrow = 1;
             xfor4 = new_x;
             yfor4 = new_y;
             counterfor4 = 1;
             switch (c) {
-                case 'a':
+                case 'a':  // Left
                     na++; break;
-                case 'w':
+                case 'w':  // Up
                     nw++; break;
-                case 's':
-                    ns++; break;
-                case 'd':
+                case 'x':  // Down
+                    nx++; break;
+                case 'd':  // Right
                     nd++; break;
+                case 'q':  // Up-Left
+                    nq++; break;
+                case 'e':  // Up-Right
+                    ne++; break;
+                case 'z':  // Down-Left
+                    nz++; break;
+                case 'c':  // Down-Right
+                    nc++; break;
             }
 
             current_user->weapons.Normal_Arrow_count--;
@@ -9774,24 +10504,23 @@ int treasure_room(struct user *current_user , int level){
                 fire_health -= 10*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
-                counterfor4=0;
-                start_normal_arrow=0;
+                counterfor4 = 0;
+                start_normal_arrow = 0;
             }
-            if(xfor4 == new_x_s && yfor2 == new_y_s) {
+            if(xfor4 == new_x_s && yfor4 == new_y_s) {
                 snake_health -= 10*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
-                counterfor4=0;
-                start_normal_arrow=0;
+                counterfor4 = 0;
+                start_normal_arrow = 0;
             }
-            if(xfor4 == xd && yfor4== yd) {
+            if(xfor4 == xd && yfor4 == yd) {
                 deamon_health -= 10*k;
                 if(deamon_health <= 0) deamon_health = 0;
-                mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
-                counterfor4=0;
-                start_normal_arrow=0;
+                mvprintw(3, 3, "You hit Demon!  health: %d/5                           ", deamon_health);
+                counterfor4 = 0;
+                start_normal_arrow = 0;
             }
-
             if(xfor4 == new_x_g && yfor4 == new_y_g) {
                 giant_health -= 10*k;
                 if(giant_health <= 0) giant_health = 0;
@@ -9808,67 +10537,87 @@ int treasure_room(struct user *current_user , int level){
                 start_normal_arrow=0;
             }
 
-
-            if(na==1) {
+            if(na == 1) {
                 xfor4--;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
-                    counterfor4=0;
-                    if(map[yfor4][xfor4+1]=='.')
-                    {
-                        map[yfor4][xfor4+1]='c';
-                    }
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4][xfor4+1] == '.') map[yfor4][xfor4+1] = 'c';
                 }
             }
-            else if(ns==1) {
+            else if(nx == 1) {
                 yfor4++;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
-                    counterfor4=0;
-                    if(map[yfor4-1][xfor4]=='.')
-                    {
-                        map[yfor4-1][xfor4]='c';
-                    }
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4-1][xfor4] == '.') map[yfor4-1][xfor4] = 'c';
                 }
             }
-            else if(nd==1) {
+            else if(nd == 1) {
                 xfor4++;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
-                    counterfor4=0;
-                    if(map[yfor4][xfor4-1]=='.')
-                    {
-                        map[yfor4][xfor4-1]='c';
-                    }
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4][xfor4-1] == '.') map[yfor4][xfor4-1] = 'c';
                 }
             }
-            else if(nw==1) {
+            else if(nw == 1) {
                 yfor4--;
-                if(map[yfor4][xfor4]=='|' || map[yfor4][xfor4]=='_'){
-                    counterfor4=0;
-                    if(map[yfor4+1][xfor4]=='.')
-                    {
-                        map[yfor4+1][xfor4]='c';
-                    }
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4+1][xfor4] == '.') map[yfor4+1][xfor4] = 'c';
+                }
+            }
+            else if(nq == 1) {
+                yfor4--; xfor4--;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4+1][xfor4+1] == '.') map[yfor4+1][xfor4+1] = 'c';
+                }
+            }
+            else if(ne == 1) {
+                yfor4--; xfor4++;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4+1][xfor4-1] == '.') map[yfor4+1][xfor4-1] = 'c';
+                }
+            }
+            else if(nz == 1) {
+                yfor4++; xfor4--;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4-1][xfor4+1] == '.') map[yfor4-1][xfor4+1] = 'c';
+                }
+            }
+            else if(nc == 1) {
+                yfor4++; xfor4++;
+                if(map[yfor4][xfor4] == '|' || map[yfor4][xfor4] == '_') {
+                    counterfor4 = 0;
+                    if(map[yfor4-1][xfor4-1] == '.') map[yfor4-1][xfor4-1] = 'c';
                 }
             }
 
-            counterfor4++;
-            if(counterfor4 >= 5) {
-                if(map[yfor4][xfor4]=='.'){
-                    map[yfor4][xfor4]='c'; // c represents 1 normal arrow
+            if(start_normal_arrow != 0) {
+                counterfor4++;
+                if(counterfor4 >= 5) {
+                    if(map[yfor4][xfor4] == '.') {
+                        map[yfor4][xfor4] = 'c';  // c represents 1 normal arrow
+                    }
+                    start_normal_arrow = 0;
+                    counterfor4 = 0;
+                    nd = 0; na = 0; nw = 0; nx = 0;
+                    nq = 0; ne = 0; nz = 0; nc = 0;
                 }
-                start_normal_arrow = 0;
-                counterfor4 = 0;
-                nd=0; na=0; nw=0; ns=0;
-            }
-            if(map[yfor4][xfor4]=='.'){
-                mvaddch(yfor4, xfor4, '-');
+                if(map[yfor4][xfor4] == '.') {
+
+                    mvaddch(yfor4, xfor4, '-');
+                }
             }
 
             refresh();
         }
+
         ////////////
 
         ///////////Magic wand
-        if(in_use_weapon == 3 && previous_c == 'p') {
+        if(in_use_weapon == 3 && previous_c == 's') {
             start_magic_wand = 1;
             xfor3 = new_x;
             yfor3 = new_y;
@@ -9878,10 +10627,18 @@ int treasure_room(struct user *current_user , int level){
                     ma++; break;
                 case 'w':
                     mw++; break;
-                case 's':
-                    ms++; break;
+                case 'x':
+                    mx++; break;
                 case 'd':
                     md++; break;
+                case 'q':
+                    mq++; break;
+                case 'e':
+                    me++; break;
+                case 'z':
+                    mz++; break;
+                case 'c':
+                    mc++; break;
             }
 
             current_user->weapons.Magic_Wand_count--;
@@ -9896,24 +10653,24 @@ int treasure_room(struct user *current_user , int level){
                 fire_health -= 15*k;
                 if(fire_health <= 0) fire_health = 0;
                 mvprintw(3, 3, "You hit Fire breathing monster!  health: %d/10                   ", fire_health);
-                counterfor3=0;
+                counterfor3 = 0;
+                start_magic_wand = 0;
             }
             if(xfor3 == new_x_s && yfor3 == new_y_s) {
                 snake_health -= 15*k;
                 if(snake_health <= 0) snake_health = 0;
                 mvprintw(3, 3, "You hit Snake!  health: %d/20                                    ", snake_health);
-                counterfor3=0;
-                snake_chase=0;
-                start_magic_wand=0;
+                counterfor3 = 0;
+                snake_chase = 0;
+                start_magic_wand = 0;
             }
             if(xfor3 == xd && yfor3 == yd) {
                 deamon_health -= 15*k;
                 if(deamon_health <= 0) deamon_health = 0;
-                mvprintw(3, 3, "You hit Deamon!  health: %d/5                           ", deamon_health);
-                counterfor3=0;
-                start_magic_wand=0;
+                mvprintw(3, 3, "You hit Deamon!  health: %d/5                                  ", deamon_health);
+                counterfor3 = 0;
+                start_magic_wand = 0;
             }
-
             if(xfor3 == new_x_g && yfor3 == new_y_g) {
                 giant_health -= 15*k;
                 if(giant_health <= 0) giant_health = 0;
@@ -9921,70 +10678,96 @@ int treasure_room(struct user *current_user , int level){
                 counterfor3=0;
                 start_magic_wand=0;
             }
-            if(xfor4 == new_x_u && yfor2 == new_y_u) {
+            if(xfor3 == new_x_u && yfor3 == new_y_u) {
                 undeed_health -= 15*k;
                 if(undeed_health <= 0) undeed_health = 0;
                 mvprintw(3, 3, "You hit Undeed!  health: %d/30                                     ", undeed_health);
-                counterfor4=0;
+                counterfor3=0;
                 start_magic_wand=0;
             }
 
-            if(ma==1) {
+            if(ma == 1) {
                 xfor3--;
-                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
-                    counterfor3=0;
-                    if(map[yfor3][xfor3+1]=='.')
-                    {
-                        map[yfor3][xfor3+1]='x';
-                    }
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3][xfor3+1] == '.') map[yfor3][xfor3+1] = 'x';
                 }
             }
-            else if(ms==1) {
+            else if(mx == 1) {
                 yfor3++;
-                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
-                    counterfor3=0;
-                    if(map[yfor3-1][xfor3+1]=='.')
-                    {
-                        map[yfor3-1][xfor3+1]='x';
-                    }
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3-1][xfor3] == '.') map[yfor3-1][xfor3] = 'x';
                 }
             }
-            else if(md==1) {
+            else if(md == 1) {
                 xfor3++;
-                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
-                    counterfor3=0;
-                    if(map[yfor3][xfor3-1]=='.')
-                    {
-                        map[yfor3][xfor3-1]='x';
-                    }
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3][xfor3-1] == '.') map[yfor3][xfor3-1] = 'x';
                 }
             }
-            else if(mw==1) {
+            else if(mw == 1) {
                 yfor3--;
-                if(map[yfor3][xfor3]=='|' || map[yfor3][xfor3]=='_'){
-                    counterfor3=0;
-                    if(map[yfor3+1][xfor3]=='.')
-                    {
-                        map[yfor3+1][xfor3]='x';
-                    }
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3+1][xfor3] == '.') map[yfor3+1][xfor3] = 'x';
                 }
             }
 
-            counterfor3++;
-            if(counterfor3 >= 5) {
-                if(map[yfor3][xfor3]=='.'){
-                    map[yfor3][xfor3]='x'; // x represents 1 magic wand
+            else if(mq == 1) {
+                yfor3--; xfor3--;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3+1][xfor3+1] == '.') map[yfor3+1][xfor3+1] = 'x';
                 }
-                start_magic_wand = 0;
-                counterfor3 = 0;
-                md=0; ma=0; mw=0; ms=0;
             }
-            if(map[yfor3][xfor3]=='.'){
-                mvaddch(yfor3, xfor3, '+');
+            else if(me == 1) {
+                yfor3--; xfor3++;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3+1][xfor3-1] == '.') map[yfor3+1][xfor3-1] = 'x';
+                }
             }
+            else if(mz == 1) {
+                yfor3++; xfor3--;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3-1][xfor3+1] == '.') map[yfor3-1][xfor3+1] = 'x';
+                }
+            }
+            else if(mc == 1) {
+                yfor3++; xfor3++;
+                if(map[yfor3][xfor3] == '|' || map[yfor3][xfor3] == '_') {
+                    counterfor3 = 0;
+                    if(map[yfor3-1][xfor3-1] == '.') map[yfor3-1][xfor3-1] = 'x';
+                }
+            }
+
+            if(start_magic_wand != 0) {
+                counterfor3++;
+                if(counterfor3 >= 5) {
+                    if(map[yfor3][xfor3] == '.') {
+                        map[yfor3][xfor3] = 'x';
+                    }
+                    start_magic_wand = 0;
+                    counterfor3 = 0;
+                    md = 0; ma = 0; mw = 0; mx = 0;
+                    mq = 0; me = 0; mz = 0; mc = 0;
+                }
+                if(map[yfor3][xfor3] == '.') {
+                    char magic_char = '+';
+                    if((mq == 1 || mc == 1) || (me == 1 || mz == 1)) {
+                        magic_char = '*';
+                    }
+                    mvaddch(yfor3, xfor3, magic_char);
+                }
+            }
+
             mvprintw(2, 3, "                                                            ");
             refresh();
         }
+
         ////////////
 
 
@@ -9997,19 +10780,21 @@ int treasure_room(struct user *current_user , int level){
 
 
         if(food>=10){
-            if(food4health_counter>=3){
-                if(current_user->spells.health_spell_counter>0){
+            if(current_user->spells.health_spell_counter>0){
+                current_user->spells.health_spell_counter-=1;
+                if(current_user->spells.health_spell_counter<0) current_user->spells.health_spell_counter=0;
+                if(food4health_counter>=4){
                     health+=2;
-                    current_user->spells.health_spell_counter-=1;
-                    if(current_user->spells.health_spell_counter<0) current_user->spells.health_spell_counter=0;
+                    food4health_counter=0;
                 }
-                else{
-                    health+=1;
-                }
-                if(health>10) health=10;
+            }
+            else if(current_user->spells.health_spell_counter==0 && food4health_counter>=4){
+                health+=1;
                 food4health_counter=0;
             }
+            if(health>10) health=10;
         }
+
 
 
         //health
@@ -10103,6 +10888,7 @@ int treasure_room(struct user *current_user , int level){
             current_user->food1=food1;
             current_user->new_golds+=total_black_gold+total_yellow_gold;
             current_user->weapons.in_use_weapon=in_use_weapon;
+            stop_background_music();
             return 1;
         }
         previous_x = new_x;
@@ -10213,6 +10999,7 @@ int pre_leaderboard(struct user *current_user){
 
 
 int victory(struct user *current_user){
+    play_background_music("victory.wav");
     initscr();
     keypad(stdscr, TRUE);
     curs_set(0);
@@ -10253,9 +11040,10 @@ int victory(struct user *current_user){
     refresh();
 }
 
-int lost(struct user *current_user){
+int gameover(struct user *current_user){
     initscr();
     keypad(stdscr, TRUE);
+    play_background_music("game_over.wav");
     curs_set(0);
     refresh();
     noecho();
